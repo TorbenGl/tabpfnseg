@@ -1,0 +1,26 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "tabpfnseg"
+version = "0.1.0"
+description = "Is TabPFN-3.5 an in-context segmenter? Few-shot / in-context segmentation benchmark vs SegGPT and SAM3."
+requires-python = ">=3.10"
+dependencies = [
+  "torch>=2.5",
+  "torchvision",
+  "numpy",
+  "scipy",
+  "scikit-learn",
+  "pillow",
+  "transformers>=5.0",
+  "tabpfn>=10.2",
+  "tqdm",
+]
+
+[project.optional-dependencies]
+dev = ["pytest"]
+
+[tool.setuptools.packages.find]
+include = ["tabpfnseg*"]

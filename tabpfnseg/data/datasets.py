@@ -181,6 +181,132 @@ def build_chestx(root: str, split: str = "test") -> FewShotDataset:
     return ds
 
 
+# --------------------------------------------------------------------------- underwater: SUIM-FSS
+SUIM_COLORS = {  # SUIM colour code (R,G,B bits); BW (waterbody, 000) is background and excluded
+    "HD": (0, 0, 1), "PF": (0, 1, 0), "WR": (0, 1, 1), "RO": (1, 0, 0),
+    "RI": (1, 0, 1), "FV": (1, 1, 0), "SR": (1, 1, 1),
+}
+SUIM_NAMES = {"HD": "human diver", "PF": "aquatic plants and sea-grass", "WR": "wreck or ruin",
+              "RO": "underwater robot", "RI": "reef and invertebrates", "FV": "fish and vertebrates",
+              "SR": "sea-floor and rocks"}
+
+
+class SuimDataset(FewShotDataset):
+    """SUIM (Islam et al., IROS'20) as few-shot benchmark, following SUIM-FSS (FSSUWNet, 2025):
+    7 classes (waterbody = background), one binary mask per (image, class), instances whose class
+    covers < 10% of the image are dropped. Nothing is trained here, so both SUIM-FSS folds are test
+    classes; images from train_val and TEST are pooled.
+
+    Expected layout: <root>/SUIM/{train_val,TEST}/images/*.jpg  and  .../masks/<stem>.bmp
+    """
+
+    def __init__(self, root, split="test", min_frac=0.10):
+        super().__init__("suim", root, split, prompt_names=SUIM_NAMES)
+        index_file = os.path.join(root, "SUIM", f".tabpfnseg_index_{min_frac}.txt")
+        if os.path.exists(index_file):
+            rows = [l.split("\t") for l in open(index_file).read().splitlines() if l]
+        else:
+            rows = []
+            for sub in ("train_val", "TEST"):
+                for p in sorted(glob.glob(os.path.join(root, "SUIM", sub, "images", "*"))):
+                    stem = os.path.splitext(os.path.basename(p))[0]
+                    mp = os.path.join(root, "SUIM", sub, "masks", stem + ".bmp")
+                    if not os.path.exists(mp):
+                        continue
+                    codes = self._codes(mp)
+                    for c, bits in SUIM_COLORS.items():
+                        if (codes == self._bits2code(bits)).mean() >= min_frac:
+                            rows.append([c, self._rel(p), self._rel(mp)])
+            if rows:
+                with open(index_file, "w") as f:
+                    f.write("\n".join("\t".join(r) for r in rows))
+        for c, ip, mp in rows:
+            self.items.setdefault(c, []).append((ip, f"{mp}::{c}"))
+        self.classes = sorted(self.items)
+
+    @staticmethod
+    def _bits2code(b):
+        return b[0] * 4 + b[1] * 2 + b[2]
+
+    @staticmethod
+    def _codes(path):
+        m = np.asarray(Image.open(path).convert("RGB")) > 127
+        return m[..., 0] * 4 + m[..., 1] * 2 + m[..., 2]
+
+    def load(self, img_rel, mask_rel):
+        mp, c = mask_rel.split("::")
+        img = _load_rgb(os.path.join(self.root, img_rel))
+        mask = (self._codes(os.path.join(self.root, mp)) == self._bits2code(SUIM_COLORS[c])).astype(np.uint8)
+        if mask.shape != img.shape[:2]:
+            mask = (np.asarray(Image.fromarray(mask * 255).resize(img.shape[1::-1], Image.NEAREST)) > 127).astype(np.uint8)
+        return img, mask
+
+
+# --------------------------------------------------------------------------- COCO-json (UIIS, UIIS10K, USIS10K, ...)
+class CocoSemanticDataset(FewShotDataset):
+    """Instance datasets in COCO json format -> one binary mask per (image, category) = union of
+    that category's instances. Covers the underwater instance sets UIIS, UIIS10K, USIS10K.
+
+    Expected layout: <root>/<name>/annotations.json (or set TABPFNSEG_COCO_ANN) and images under
+    <root>/<name>/images/ (file_name relative to that folder).
+    Pairs whose category covers < min_frac of the image are dropped (tiny targets are ill-posed
+    for 1-shot and dominate noise).
+    """
+
+    def __init__(self, name, root, split="test", ann=None, img_dir=None, min_frac=0.01):
+        import json
+
+        super().__init__(name, root, split)
+        base = os.path.join(root, name)
+        ann = ann or os.environ.get("TABPFNSEG_COCO_ANN") or os.path.join(base, "annotations.json")
+        self.img_dir = img_dir or os.path.join(base, "images")
+        d = json.load(open(ann))
+        self.cats = {c["id"]: c["name"] for c in d["categories"]}
+        self.imgs = {im["id"]: im for im in d["images"]}
+        self.anns: dict[tuple[int, int], list] = {}
+        for a in d["annotations"]:
+            if a.get("iscrowd", 0) and not a.get("segmentation"):
+                continue
+            self.anns.setdefault((a["image_id"], a["category_id"]), []).append(a)
+        for (iid, cid), anns in sorted(self.anns.items()):
+            im = self.imgs[iid]
+            area = sum(a.get("area", 0) for a in anns)
+            if area < min_frac * im["width"] * im["height"]:
+                continue
+            cname = self.cats[cid]
+            self.items.setdefault(cname, []).append(
+                (os.path.relpath(os.path.join(self.img_dir, im["file_name"]), root), f"coco::{iid}::{cid}"))
+        self.classes = sorted(c for c, v in self.items.items() if len(v) >= 2)
+        self.prompt_names = {c: c.replace("_", " ") for c in self.classes}
+
+    def load(self, img_rel, mask_rel):
+        from PIL import ImageDraw
+
+        _, iid, cid = mask_rel.split("::")
+        im = self.imgs[int(iid)]
+        img = _load_rgb(os.path.join(self.root, img_rel))
+        H, W = im["height"], im["width"]
+        canvas = Image.new("L", (W, H), 0)
+        draw = ImageDraw.Draw(canvas)
+        mask = np.zeros((H, W), bool)
+        for a in self.anns[(int(iid), int(cid))]:
+            seg = a["segmentation"]
+            if isinstance(seg, list):
+                for poly in seg:
+                    if len(poly) >= 6:
+                        draw.polygon([tuple(poly[i:i + 2]) for i in range(0, len(poly), 2)], fill=1)
+            else:  # RLE
+                from pycocotools import mask as mask_utils
+
+                rle = mask_utils.frPyObjects(seg, H, W) if isinstance(seg["counts"], list) else seg
+                mask |= mask_utils.decode(rle).astype(bool)
+        mask |= np.asarray(canvas, bool)
+        mask = mask.astype(np.uint8)
+        if mask.shape != img.shape[:2]:
+            mask = (np.asarray(Image.fromarray(mask * 255).resize(img.shape[1::-1], Image.NEAREST)) > 127).astype(np.uint8)
+        return img, mask
+
+
 # --------------------------------------------------------------------------- generic folder
 def build_folder(root: str, split: str = "test") -> FewShotDataset:
     """Generic layout for your own data: <root>/<class>/images/*.{jpg,png} + <root>/<class>/masks/<same stem>.png"""
@@ -241,11 +367,26 @@ DATASETS = {
     "isic": build_isic,
     "chestx": build_chestx,
     "folder": build_folder,
+    "suim": lambda root, split="test": SuimDataset(root, split),
+    # UWS (Kabir et al. IROS'23, 21 underwater animals): use the generic folder layout under <root>/UWS
+    "uws": lambda root, split="test": _named(build_folder(os.path.join(root, "UWS"), split), "uws", root),
+    "uiis": lambda root, split="test": CocoSemanticDataset("UIIS", root, split),
+    "uiis10k": lambda root, split="test": CocoSemanticDataset("UIIS10K", root, split),
+    "usis10k": lambda root, split="test": CocoSemanticDataset("USIS10K", root, split),
 }
+
+
+def _named(ds, name, root):
+    """re-root a folder dataset so paths stay relative to the global data root"""
+    ds.items = {c: [(os.path.relpath(os.path.join(ds.root, i), root), os.path.relpath(os.path.join(ds.root, m), root))
+                    for i, m in v] for c, v in ds.items.items()}
+    ds.root, ds.name = root, name
+    return ds
 
 # Default number of episodes per the CD-FSS protocol (PATNet and follow-ups).
 # FSS-1000: every test image is used as query exactly once (240 classes x 10 = 2400).
-DEFAULT_EPISODES = {"fss1000": 2400, "deepglobe": 1200, "isic": 1200, "chestx": 1200, "synthetic": 40}
+DEFAULT_EPISODES = {"fss1000": 2400, "deepglobe": 1200, "isic": 1200, "chestx": 1200, "synthetic": 40,
+                    "suim": 1200, "uws": 1200, "uiis": 1200, "uiis10k": 1200, "usis10k": 1200}
 
 
 def build_dataset(name: str, root: str = "datasets", split: str = "test") -> FewShotDataset:

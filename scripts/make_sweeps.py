@@ -9,7 +9,7 @@ Stage 1  model selection on FSS-1000 *val* (--purpose tune; classes disjoint fro
    1b  working resolution: patch-level vs. sub-patch (x2/x4, bilinear vs JBU) and context sampling
    1c  TabPFN knobs: version, n_estimators, PCA, regression on soft labels, ambiguous-cell dropping
 Stage 2  final report: frozen configs (edit FINAL below after looking at stage 1) on
-         FSS-1000 test + Deepglobe + ISIC + Chest X-ray, 1/5-shot, several seeds,
+         FSS-1000 test + Deepglobe + ISIC + Chest X-ray + underwater (SUIM-FSS, UWS), 1/5-shot, several seeds,
          against SegGPT and SAM3 (+ SAM3 refinement applied to every method equally).
 """
 import itertools
@@ -31,6 +31,7 @@ FEATS = {
 }
 HEADS = ["tabpfn", "logreg", "knn", "proto"]
 CD = ["deepglobe", "isic", "chestx"]
+UW = ["suim", "uws"]  # underwater; add "uiis", "uiis10k", "usis10k" once downloaded (COCO-json loader)
 TUNE = "--dataset fss1000 --split val --purpose tune --episodes 600 --shots 1 --seed 0"
 
 
@@ -49,7 +50,7 @@ def write(name, lines):
 
 # ----------------------------------------------------------------------------- stage 0
 s0 = []
-for ds in ["fss1000"] + CD:
+for ds in ["fss1000"] + CD + UW:
     for bb in BACKBONES:
         for res in ["patch", "x2", "x4", "x8"]:
             s0.append(f"--dataset {ds} --method oracle_grid {common(bb)} --res {res} --shots 1 --seed 0")
@@ -116,7 +117,7 @@ REFINE = ["tabpfn_patch", "proto_patch", "seggpt"]
 SEEDS = [0, 1, 2]
 
 s2 = []
-for ds, shots, seed in itertools.product(["fss1000"] + CD, [1, 5], SEEDS):
+for ds, shots, seed in itertools.product(["fss1000"] + CD + UW, [1, 5], SEEDS):
     split = "--split test"
     for key, cfg in FINAL.items():
         s2.append(f"--dataset {ds} {split} --shots {shots} --seed {seed} {cfg}")

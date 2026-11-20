@@ -38,4 +38,12 @@ if [ ! -d LungSegmentation ]; then
   mv "lung_tmp/Lung Segmentation" LungSegmentation 2>/dev/null || mv lung_tmp/*/ LungSegmentation
   rm -rf lung_tmp
 fi
+# ---------------- underwater (manual: hosted on Google Drive / project pages, links change)
+# SUIM  (Islam et al. IROS'20): https://irvlab.cs.umn.edu/resources/suim-dataset
+#       -> unpack to SUIM/train_val/{images,masks} and SUIM/TEST/{images,masks}
+# UWS   (Kabir et al., 'Few-shot segmentation and semantic segmentation for underwater imagery', IROS'23; link in the paper)
+#       -> arrange as UWS/<class>/images/*.jpg + UWS/<class>/masks/<stem>.png
+# UIIS (WaterMask, ICCV'23: github.com/LiamLian0727/WaterMask), USIS10K (arXiv 2406.06039), UIIS10K (UWSAM, arXiv 2505.15581)
+#       -> <NAME>/annotations.json (+ <NAME>/images/); use the TEST split json
+for d in SUIM UWS UIIS UIIS10K USIS10K; do [ -d "$d" ] && echo "found $d" || echo "missing $d (manual download, see comments)"; done
 echo "done -> $(pwd)"; ls

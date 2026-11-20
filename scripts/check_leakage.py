@@ -22,13 +22,13 @@ from tabpfnseg.data.episodes import dhash, hamming
 PRETRAIN_OVERLAP = """
 Known pre-training data overlap (from the papers; 'yes' = images or the same domain were seen):
 
-| model            | pre-training data                                        | FSS-1000 | Deepglobe            | ISIC | Chest X-ray | COCO-20i / PASCAL-5i |
-|------------------|----------------------------------------------------------|----------|----------------------|------|-------------|----------------------|
-| TabPFN-3.5       | synthetic tabular priors only                            | no       | no                   | no   | no          | no                   |
-| DINOv2 (LVD-142M)| curated web images, dedup. vs. standard eval sets        | unclear* | unclear*             | no** | no**        | dedup'd vs test sets |
-| DINOv3 (LVD-1.7B)| Instagram-scale web images (+ separate SAT-493M model)   | unclear* | unclear*             | no** | no**        | unclear*             |
-| SegGPT           | COCO, ADE20K, VOC, Cityscapes, LIP, PACO, iSAID, loveDA, retina sets | no | DOMAIN (loveDA/iSAID aerial land cover) | no | no | YES (COCO/VOC train) |
-| SAM3             | SA-Co (incl. medical, aerial, ...), SA-1B, 5.4B image-text pairs | unclear | likely domain | likely domain | likely domain | YES (COCO, LVIS) |
+| model            | pre-training data                                        | FSS-1000 | Deepglobe            | ISIC | Chest X-ray | COCO-20i / PASCAL-5i | underwater (SUIM/UWS/UIIS) |
+|------------------|----------------------------------------------------------|----------|----------------------|------|-------------|----------------------|----------------------------|
+| TabPFN-3.5       | synthetic tabular priors only                            | no       | no                   | no   | no          | no                   | no |
+| DINOv2 (LVD-142M)| curated web images, dedup. vs. standard eval sets        | unclear* | unclear*             | no** | no**        | dedup'd vs test sets | unclear* (web) |
+| DINOv3 (LVD-1.7B)| Instagram-scale web images (+ separate SAT-493M model)   | unclear* | unclear*             | no** | no**        | unclear*             | unclear* (web) |
+| SegGPT           | COCO, ADE20K, VOC, Cityscapes, LIP, PACO, iSAID, loveDA, retina sets | no | DOMAIN (loveDA/iSAID aerial land cover) | no | no | YES (COCO/VOC train) | no |
+| SAM3             | SA-Co (incl. medical, aerial, ...), SA-1B, 5.4B image-text pairs | unclear | likely domain | likely domain | likely domain | YES (COCO, LVIS) | DOMAIN (FathomNet in SA-Co) |
 
 *  web-scale corpora; individual benchmark images cannot be ruled out, but no segmentation labels.
 ** frozen backbone: no masks of these domains seen; same for TabPFN heads on top.
@@ -41,7 +41,7 @@ ap = argparse.ArgumentParser()
 ap.add_argument("--root", default="datasets")
 ap.add_argument("--episodes", default="episodes")
 ap.add_argument("--hamming", type=int, default=2)
-ap.add_argument("--datasets", nargs="+", default=["fss1000", "deepglobe", "isic", "chestx"])
+ap.add_argument("--datasets", nargs="+", default=["fss1000", "deepglobe", "isic", "chestx", "suim", "uws"])
 a = ap.parse_args()
 
 problems = 0

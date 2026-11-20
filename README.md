@@ -1,0 +1,111 @@
+# tabpfnseg: Is TabPFN‑3.5 an in‑context segmenter?
+
+Frozen ViT features → one table row per location → **TabPFN‑3.5 in context** (support rows = labelled
+context, query rows = prediction) → mask. No training anywhere. Compared under one leakage-controlled
+few-shot protocol against
+* the **same features** with per-episode logistic regression / kNN / prototypes (*does TabPFN add anything as the learner?*)
+* **SegGPT** (a dedicated in-context segmenter) and **SAM3** (stitched-canvas exemplars, plus text and refinement references).
+
+Full rationale, protocol, leakage analysis and the patch-level vs pixel-level discussion:
+**[docs/DESIGN.md](docs/DESIGN.md)**.
+
+## Layout
+```
+tabpfnseg/data/        datasets (FSS-1000, Deepglobe, ISIC, Chest X-ray, SUIM, UWS, COCO-json underwater sets, folder, synthetic) + shared episodes
+tabpfnseg/features/    HF ViT backbones (DINOv2/v3, intermediate layers), feature tables, JBU upsampling, context sampling
+tabpfnseg/methods/     heads (tabpfn, tabpfn_reg, logreg, knn, proto), oracle_grid, seggpt, sam3 (stitch/text/refine)
+tabpfnseg/eval/        class-wise mIoU, FB-IoU
+tabpfnseg/run.py       one evaluation run (CLI)
+scripts/               download_data.sh, prefetch_models.py, check_leakage.py, make_sweeps.py, aggregate.py
+slurm/                 setup_env.sh, smoke_gpu.sbatch, run_one.sbatch, sweep.sbatch, submit_sweep.sh, sweeps/*.txt
+tests/                 CPU smoke tests (no downloads)
+```
+
+## Local quick check (CPU, no downloads)
+```bash
+pip install -e ".[dev]"
+```
+```bash
+pytest -q tests
+```
+```bash
+python -m tabpfnseg.run --dataset synthetic --backbone dummy --img_size 160 --method knn --device cpu
+```
+
+## On the cluster (H200, SLURM)
+1. Set up the environment on the login node (needs internet):
+   ```bash
+   bash slurm/setup_env.sh
+   ```
+2. Accept the licences (DINOv3 and SAM3 on Hugging Face; TabPFN‑3.5 at ux.priorlabs.ai), then export the tokens:
+   ```bash
+   export HF_TOKEN=... TABPFN_TOKEN=...
+   ```
+3. Download the weights and sanity-check every model once (compute nodes then run offline):
+   ```bash
+   source slurm/common.sh && HF_HUB_OFFLINE=0 TRANSFORMERS_OFFLINE=0 python scripts/prefetch_models.py --device cpu
+   ```
+4. Download the data:
+   ```bash
+   bash scripts/download_data.sh
+   ```
+5. Run the leakage audit:
+   ```bash
+   python scripts/check_leakage.py
+   ```
+6. Run the smoke job (every method, 10 episodes):
+   ```bash
+   sbatch slurm/smoke_gpu.sbatch
+   ```
+7. Run the stages:
+   ```bash
+   python scripts/make_sweeps.py
+   ```
+   ```bash
+   bash slurm/submit_sweep.sh slurm/sweeps/stage0_sanity.txt 8
+   ```
+   ```bash
+   bash slurm/submit_sweep.sh slurm/sweeps/stage1a_features.txt 8
+   ```
+   ```bash
+   bash slurm/submit_sweep.sh slurm/sweeps/stage1b_resolution.txt 8
+   ```
+   ```bash
+   bash slurm/submit_sweep.sh slurm/sweeps/stage1c_tabpfn_knobs.txt 8
+   ```
+   Then edit `FINAL` in `scripts/make_sweeps.py`, choosing from **FSS‑1000 val results only**, and:
+   ```bash
+   python scripts/make_sweeps.py && bash slurm/submit_sweep.sh slurm/sweeps/stage2_report.txt 8
+   ```
+8. Build the results table:
+   ```bash
+   python scripts/aggregate.py results --out results/table.md
+   ```
+
+Adapt the `#SBATCH --gres/--partition/--account` lines and the `module load` line in `slurm/common.sh`
+to your cluster. Re-submitting a sweep skips finished runs (`--skip_done`).
+
+## Single run examples
+```bash
+# TabPFN-3.5 on patch tokens, "patch + neighbourhood" 6k features, FSS-1000 val (development)
+python -m tabpfnseg.run --dataset fss1000 --split val --purpose tune --episodes 600 \
+  --method tabpfn --backbone dinov2r_l --img_size 518 --features "layers=24;pools=1,3,5,9,17,g"
+```
+```bash
+# sub-patch rows: x4 grid, joint-bilateral upsampling, colour cues, boundary-weighted context
+python -m tabpfnseg.run --dataset isic --shots 1 --method tabpfn --features "layers=4,8,12,16,20,24;rgb=1" \
+  --res x4 --up jbu --sampling boundary --max_ctx 16000
+```
+```bash
+# baselines on the same episodes
+python -m tabpfnseg.run --dataset chestx --shots 5 --method seggpt
+```
+```bash
+python -m tabpfnseg.run --dataset suim --shots 1 --method sam3_stitch
+```
+
+## Status
+* Tested here (CPU): data and episode logic, feature builder, JBU, every feature head, the TabPFN code path
+  (with the openly licensed v2 weights), and SegGPT (with a tiny random model).
+* Not yet run with real weights: TabPFN‑3.5 (needs your token), DINOv3 / SAM3 (gated). `slurm/smoke_gpu.sbatch`
+  and `scripts/prefetch_models.py` are the first things to run on the H200.

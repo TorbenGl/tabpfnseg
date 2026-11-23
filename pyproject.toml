@@ -21,6 +21,7 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = ["pytest"]
+data = ["gdown", "kaggle", "six"]
 
 [tool.setuptools.packages.find]
 include = ["tabpfnseg*"]

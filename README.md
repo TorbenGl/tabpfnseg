@@ -33,10 +33,13 @@ python -m tabpfnseg.run --dataset synthetic --backbone dummy --img_size 160 --me
 ```
 
 ## On the cluster (H200, SLURM)
-1. Set up the environment on the login node (needs internet):
+1. Build the **uv** environment in `.venv` on the login node (needs internet). The script installs uv to
+   `~/.local/bin` if it is missing and downloads its own Python 3.12 if needed:
    ```bash
    bash slurm/setup_env.sh
    ```
+   It defaults to CUDA 12.8 wheels. On older drivers use `TORCH_CUDA=cu126` (check `nvidia-smi`, "CUDA Version").
+   If the home quota is small, set `UV_CACHE_DIR` to a scratch filesystem.
 2. Accept the licences (DINOv3 and SAM3 on Hugging Face; TabPFN‑3.5 at ux.priorlabs.ai), then export the tokens:
    ```bash
    export HF_TOKEN=... TABPFN_TOKEN=...
@@ -45,19 +48,37 @@ python -m tabpfnseg.run --dataset synthetic --backbone dummy --img_size 160 --me
    ```bash
    source slurm/common.sh && HF_HUB_OFFLINE=0 TRANSFORMERS_OFFLINE=0 python scripts/prefetch_models.py --device cpu
    ```
-4. Download the data:
+4. Kaggle credentials (only for Chest X‑ray): on kaggle.com go to **Settings → API → Create New Token**.
+   This downloads `kaggle.json`, which you copy to the server:
+   ```bash
+   mkdir -p ~/.kaggle && mv kaggle.json ~/.kaggle/ && chmod 600 ~/.kaggle/kaggle.json
+   ```
+   Alternatively export `KAGGLE_API_TOKEN=...` (newer token type) or `KAGGLE_USERNAME` + `KAGGLE_KEY`.
+5. Download the data:
    ```bash
    bash scripts/download_data.sh
    ```
-5. Run the leakage audit:
+6. Run the leakage audit:
    ```bash
-   python scripts/check_leakage.py
+   source slurm/common.sh && python scripts/check_leakage.py
    ```
-6. Run the smoke job (every method, 10 episodes):
+7. Interactive GPU work through **srun** (environment, caches and paths already set):
+   ```bash
+   bash slurm/srun.sh
+   ```
+   You can also run one command directly:
+   ```bash
+   bash slurm/srun.sh python -m tabpfnseg.run --dataset fss1000 --split val --purpose tune --episodes 600 --limit 20 --method tabpfn
+   ```
+   Resources and cluster flags are set via environment variables:
+   ```bash
+   TIME=04:00:00 GPUS=h200:1 MEM=128G SRUN_EXTRA="--partition=gpu --account=myproj" bash slurm/srun.sh
+   ```
+8. Run the smoke job (every method, 10 episodes):
    ```bash
    sbatch slurm/smoke_gpu.sbatch
    ```
-7. Run the stages:
+9. Run the stages:
    ```bash
    python scripts/make_sweeps.py
    ```
@@ -77,10 +98,10 @@ python -m tabpfnseg.run --dataset synthetic --backbone dummy --img_size 160 --me
    ```bash
    python scripts/make_sweeps.py && bash slurm/submit_sweep.sh slurm/sweeps/stage2_report.txt 8
    ```
-8. Build the results table:
-   ```bash
-   python scripts/aggregate.py results --out results/table.md
-   ```
+10. Build the results table:
+    ```bash
+    python scripts/aggregate.py results --out results/table.md
+    ```
 
 Adapt the `#SBATCH --gres/--partition/--account` lines and the `module load` line in `slurm/common.sh`
 to your cluster. Re-submitting a sweep skips finished runs (`--skip_done`).

@@ -6,9 +6,12 @@
 #   Chest X-ray lungs (Shenzhen + Montgomery)              (Kaggle CLI, needs ~/.kaggle/kaggle.json)
 # Run on a login node (compute nodes are often offline). Re-running skips what exists.
 set -euo pipefail
-DATA=${DATA:-${TABPFNSEG_DATA:-datasets}}
+REPO=$(cd "$(dirname "$0")/.." && pwd)
+DATA=${DATA:-${TABPFNSEG_DATA:-$REPO/datasets}}
 mkdir -p "$DATA" && cd "$DATA"
-pip install -q gdown kaggle 2>/dev/null || true
+# gdown + kaggle come with the [data] extra of the uv env (slurm/setup_env.sh)
+[ -f "$REPO/.venv/bin/activate" ] && source "$REPO/.venv/bin/activate"
+command -v gdown >/dev/null || { echo "gdown missing: run bash slurm/setup_env.sh first"; exit 1; }
 
 if [ ! -d FSS-1000 ]; then
   gdown 16TgqOeI_0P41Eh3jWQlxlRXG9KIqtMgI -O fss1000.zip
@@ -33,10 +36,13 @@ if [ ! -d ISIC ]; then
 fi
 
 if [ ! -d LungSegmentation ]; then
+  if [ ! -f ~/.kaggle/kaggle.json ] && [ -z "${KAGGLE_USERNAME:-}" ] && [ -z "${KAGGLE_API_TOKEN:-}" ]; then
+    echo "Chest X-ray needs Kaggle credentials (~/.kaggle/kaggle.json, see README) - skipping"; else
   kaggle datasets download -d nikhilpandey360/chest-xray-masks-and-labels -p lung_tmp --unzip
   # kaggle archive: Lung Segmentation/{CXR_png,masks}
   mv "lung_tmp/Lung Segmentation" LungSegmentation 2>/dev/null || mv lung_tmp/*/ LungSegmentation
   rm -rf lung_tmp
+  fi
 fi
 # ---------------- underwater (manual: hosted on Google Drive / project pages, links change)
 # SUIM  (Islam et al. IROS'20): https://irvlab.cs.umn.edu/resources/suim-dataset

@@ -4,6 +4,9 @@ REPO=${REPO:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}
 cd "$REPO"
 # module load cuda/12.4  # <- cluster specific, uncomment / adapt
 VENV=${VENV:-$REPO/.venv}
+if [ ! -f "$VENV/bin/activate" ]; then
+  echo "No environment at $VENV - run: bash slurm/setup_env.sh  (on the login node)" >&2; exit 1
+fi
 source "$VENV/bin/activate"
 
 export TABPFNSEG_DATA=${TABPFNSEG_DATA:-$REPO/datasets}

@@ -12,7 +12,7 @@ Full rationale, protocol, leakage analysis and the patch-level vs pixel-level di
 ## Layout
 ```
 tabpfnseg/data/        datasets (FSS-1000, Deepglobe, ISIC, Chest X-ray, SUIM, UWS, COCO-json underwater sets, folder, synthetic) + shared episodes
-tabpfnseg/features/    HF ViT backbones (DINOv2/v3, intermediate layers), feature tables, JBU upsampling, context sampling
+tabpfnseg/features/    HF ViT backbones (DINOv3 used in all experiments; DINOv2 aliases kept), intermediate layers, feature tables, JBU upsampling, context sampling
 tabpfnseg/methods/     heads (tabpfn, tabpfn_reg, logreg, knn, proto), oracle_grid, seggpt, sam3 (stitch/text/refine)
 tabpfnseg/eval/        class-wise mIoU, FB-IoU
 tabpfnseg/run.py       one evaluation run (CLI)
@@ -118,7 +118,7 @@ to your cluster. Re-submitting a sweep skips finished runs (`--skip_done`).
 ```bash
 # TabPFN-3.5 on patch tokens, "patch + neighbourhood" 6k features, FSS-1000 val (development)
 python -m tabpfnseg.run --dataset fss1000 --split val --purpose tune --episodes 600 \
-  --method tabpfn --backbone dinov2r_l --img_size 518 --features "layers=24;pools=1,3,5,9,17,g"
+  --method tabpfn --backbone dinov3_l --img_size 512 --features "layers=24;pools=1,3,5,9,17,g"
 ```
 ```bash
 # sub-patch rows: x4 grid, joint-bilateral upsampling, colour cues, boundary-weighted context

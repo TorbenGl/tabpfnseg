@@ -91,7 +91,7 @@ The frozen backbone is shared by TabPFN and the feature baselines, so Q1 is leak
 ## 3. Where should the rows live? Patch level vs. "pixel level"
 
 ### 3a. Patch level (what Matcher, PerSAM, prototype methods and DINO linear probes do)
-* rows = ViT tokens (518 px / 14 gives 37×37 = 1369 rows per image). Label = mask area fraction ≥ 0.5.
+* rows = ViT tokens (DINOv3 ViT‑L/16 at 512 px gives 32×32 = 1024 rows per image). Label = mask area fraction ≥ 0.5.
 * p(fg) is predicted per query patch, upsampled bilinearly to the image, and thresholded at 0.5.
 * **Pros:** every row is a distinct, information-carrying token. 1-shot = 1.4k context rows and 5-shot
   = 6.8k, which TabPFN handles comfortably. All feature heads see exactly the same data.
@@ -130,7 +130,7 @@ up to `--max_ctx` rows:
 * Mixed cells: either drop them (`--ambig 0.2,0.8`) or keep the soft fraction as a regression target
   (`tabpfn_reg`, TabPFN regressor).
 
-**Recommendation.** Do not go to full pixel level. A 518² query is 268k rows, and with JBU the features are
+**Recommendation.** Do not go to full pixel level. A 512² query is 262k rows, and with JBU the features are
 still patch-limited. Use **x2–x4** (cells of 3–7 px) with JBU + rgb + boundary sampling. Compare it against
 patch level and against **patch level + SAM3 refinement** (`--refine sam3`), the Matcher/PerSAM recipe:
 the in-context learner handles semantics and SAM handles boundaries. The refinement is applied
@@ -157,7 +157,7 @@ ViT‑L has 1024 dims per layer. At an equal budget of about 6144 dims we compar
 | `ml6` | `layers=4,8,12,16,20,24` | multi-layer: low-level texture/edges + semantics. Cross-domain FSS papers ("the devil is in low-level features") suggest this helps ISIC/Chest |
 | `nb6` | `layers=24;pools=1,3,5,9,17,g` | **the patch and the area around it**: the patch plus mean-pooled 3×3, 5×5, 9×9 and 17×17 neighbourhoods and the image mean. A cheap "gathering" of context that disambiguates parts from wholes |
 | `ml3nb2`, `ml2nb3` | mixed | both |
-| DINOv2‑g | `layers=10,20,30,40` (4×1536) | same budget, bigger backbone |
+| DINOv3‑H+ | `layers=-25,-19,-13,-7,-1` (5×1280 = 6400) | about the same budget, bigger backbone |
 
 Each block is L2-normalised, so blocks are on a comparable scale.
 
@@ -169,7 +169,7 @@ PCA (64/256/1024, fit on the context only) to separate "more information" from "
 model uses".
 
 ## 6. Expected costs on one H200 (verify with `slurm/smoke_gpu.sbatch`; the runner logs s/episode)
-* Backbone: ViT‑L at 518² takes a few ms per image (features are cached within an episode).
+* Backbone: DINOv3 ViT‑L at 512² takes a few ms per image (features are cached within an episode).
 * Feature heads (proto/kNN/logreg): well under 1 s per episode.
 * TabPFN, patch level, 1-shot: about 1.4k × 6k context, 1.4k query rows. 5-shot is about 6.8k context.
 * TabPFN at x4: up to `max_ctx` context rows and about 22k query rows (predicted in chunks of 32k).

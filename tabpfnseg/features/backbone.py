@@ -10,6 +10,9 @@ Aliases (all frozen, no fine-tuning anywhere in this repo):
   dinov2_b    facebook/dinov2-base                     ViT-B/14, 12 blocks, 768-d
   dinov3_l    facebook/dinov3-vitl16-pretrain-lvd1689m ViT-L/16, 24 blocks, 1024-d (gated on HF)
   dinov3_b    facebook/dinov3-vitb16-pretrain-lvd1689m ViT-B/16 (gated on HF)
+  dinov3_h    facebook/dinov3-vith16plus-pretrain-lvd1689m ViT-H+/16, 1280-d (gated on HF)
+All experiments use DINOv3 (dinov3_l default, dinov3_h as the bigger-backbone check); DINOv2 aliases are kept
+only for comparison with older work.
   dummy       random patch embedding + pixel statistics, for CPU smoke tests only
 """
 from __future__ import annotations

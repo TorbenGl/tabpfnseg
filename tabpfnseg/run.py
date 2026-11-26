@@ -1,7 +1,7 @@
 """Evaluate one method on one dataset/shot/seed.
 
     python -m tabpfnseg.run --dataset fss1000 --split test --shots 1 --method tabpfn \
-        --backbone dinov2r_l --features "layers=24" --res patch
+        --backbone dinov3_l --features "layers=24" --res patch
 
 Writes <out>/<run_name>/{config.json, episodes.jsonl, summary.json}.
 """
@@ -52,8 +52,8 @@ def get_args(argv=None):
     g.add_argument("--device", default="cuda" if torch.cuda.is_available() else "cpu")
 
     g = ap.add_argument_group("features (feature-table methods)")
-    g.add_argument("--backbone", default="dinov2r_l")
-    g.add_argument("--img_size", type=int, default=518, help="518 for /14 backbones (37x37), 512 for /16 (32x32)")
+    g.add_argument("--backbone", default="dinov3_l")
+    g.add_argument("--img_size", type=int, default=512, help="518 for /14 backbones (37x37), 512 for /16 (32x32)")
     g.add_argument("--features", default="layers=-1", help="see FeatureSpec, e.g. 'layers=24;pools=1,3,5,9,17,g'")
     g.add_argument("--res", default="patch", help="patch | x2 | x4 ...")
     g.add_argument("--up", default="bilinear", choices=["bilinear", "nearest", "jbu"])

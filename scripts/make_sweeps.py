@@ -17,8 +17,7 @@ import os
 
 OUT = os.path.join(os.path.dirname(__file__), "..", "slurm", "sweeps")
 
-BACKBONES = {  # name -> img_size giving a ~32-37 patch grid
-    "dinov2r_l": 518,
+BACKBONES = {  # name -> img_size (DINOv3 only; /16 patches -> 32x32 grid at 512)
     "dinov3_l": 512,
 }
 # ~6k-dim feature tables for a 1024-d ViT-L (the "6k features" comparison)
@@ -61,9 +60,9 @@ write("stage0_sanity", s0)
 s1a = []
 for bb, (fname, f), head in itertools.product(BACKBONES, FEATS.items(), HEADS):
     s1a.append(f"{TUNE} --method {head} {common(bb)} --features '{f}' --res patch --sampling all")
-# same budget with a bigger backbone: DINOv2-g (1536-d) x 4 layers = 6144
+# bigger backbone at ~the same budget: DINOv3 ViT-H+/16 (1280-d) x 5 layers = 6400 (last 5 quarter-points, counted from the end)
 for head in HEADS:
-    s1a.append(f"{TUNE} --method {head} --backbone dinov2r_g --img_size 518 --features 'layers=10,20,30,40' --res patch")
+    s1a.append(f"{TUNE} --method {head} --backbone dinov3_h --img_size 512 --features 'layers=-25,-19,-13,-7,-1' --res patch")
 write("stage1a_features", s1a)
 
 # ----------------------------------------------------------------------------- stage 1b
@@ -84,7 +83,7 @@ write("stage1b_resolution", s1b)
 
 # ----------------------------------------------------------------------------- stage 1c
 s1c = []
-bb = "dinov2r_l"
+bb = "dinov3_l"
 for fname in ["ml6", "nb6"]:
     base = f"{TUNE} {common(bb)} --features '{FEATS[fname]}' --res patch"
     for ver in ["v3.5", "v3.5-fast", "v3", "v2.5"]:
@@ -103,12 +102,12 @@ write("stage1c_tabpfn_knobs", s1c)
 # ----------------------------------------------------------------------------- stage 2
 # >>> EDIT after stage 1: the winning configurations (chosen on FSS-1000 val ONLY) <<<
 FINAL = {
-    "tabpfn_patch": "--method tabpfn --backbone dinov2r_l --img_size 518 --features 'layers=24;pools=1,3,5,9,17,g' --res patch",
-    "tabpfn_x4": "--method tabpfn --backbone dinov2r_l --img_size 518 --features 'layers=24;pools=1,3,5,9,17,g;rgb=1' "
+    "tabpfn_patch": "--method tabpfn --backbone dinov3_l --img_size 512 --features 'layers=24;pools=1,3,5,9,17,g' --res patch",
+    "tabpfn_x4": "--method tabpfn --backbone dinov3_l --img_size 512 --features 'layers=24;pools=1,3,5,9,17,g;rgb=1' "
                  "--res x4 --up jbu --sampling boundary --max_ctx 16000",
-    "logreg_patch": "--method logreg --backbone dinov2r_l --img_size 518 --features 'layers=24;pools=1,3,5,9,17,g' --res patch",
-    "knn_patch": "--method knn --backbone dinov2r_l --img_size 518 --features 'layers=24;pools=1,3,5,9,17,g' --res patch",
-    "proto_patch": "--method proto --backbone dinov2r_l --img_size 518 --features 'layers=24' --res patch",
+    "logreg_patch": "--method logreg --backbone dinov3_l --img_size 512 --features 'layers=24;pools=1,3,5,9,17,g' --res patch",
+    "knn_patch": "--method knn --backbone dinov3_l --img_size 512 --features 'layers=24;pools=1,3,5,9,17,g' --res patch",
+    "proto_patch": "--method proto --backbone dinov3_l --img_size 512 --features 'layers=24' --res patch",
     "seggpt": "--method seggpt",
     "sam3_stitch": "--method sam3_stitch",
     "sam3_text": "--method sam3_text",  # reference only: uses class names, not in-context

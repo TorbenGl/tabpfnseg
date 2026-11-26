@@ -31,7 +31,6 @@ Known pre-training data overlap (from the papers; 'yes' = images or the same dom
 | model            | pre-training data                                        | FSS-1000 | Deepglobe            | ISIC | Chest X-ray | COCO-20i / PASCAL-5i | underwater (SUIM/UWS/UIIS) |
 |------------------|----------------------------------------------------------|----------|----------------------|------|-------------|----------------------|----------------------------|
 | TabPFN-3.5       | synthetic tabular priors only                            | no       | no                   | no   | no          | no                   | no |
-| DINOv2 (LVD-142M)| curated web images, dedup. vs. standard eval sets        | unclear* | unclear*             | no** | no**        | dedup'd vs test sets | unclear* (web) |
 | DINOv3 (LVD-1.7B)| Instagram-scale web images (+ separate SAT-493M model)   | unclear* | unclear*             | no** | no**        | unclear*             | unclear* (web) |
 | SegGPT           | COCO, ADE20K, VOC, Cityscapes, LIP, PACO, iSAID, loveDA, retina sets | no | DOMAIN (loveDA/iSAID aerial land cover) | no | no | YES (COCO/VOC train) | no |
 | SAM3             | SA-Co (incl. medical, aerial, ...), SA-1B, 5.4B image-text pairs | unclear | likely domain | likely domain | likely domain | YES (COCO, LVIS) | DOMAIN (FathomNet in SA-Co) |

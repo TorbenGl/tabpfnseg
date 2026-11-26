@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 #SBATCH --job-name=tabpfnseg-smoke
-#SBATCH --gres=gpu:h200:1
+#SBATCH --partition=gpu-node
+#SBATCH --gres=gpu:1
 #SBATCH --cpus-per-task=16
 #SBATCH --mem=64G
 #SBATCH --time=01:00:00

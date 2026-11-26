@@ -9,7 +9,7 @@
 # Extra srun flags (account, ...):               SRUN_EXTRA="--account=myproj" bash slurm/srun.sh
 set -euo pipefail
 REPO=$(cd "$(dirname "$0")/.." && pwd)
-GPUS=${GPUS:-h200:1}
+GPUS=${GPUS:-1}
 CPUS=${CPUS:-16}
 MEM=${MEM:-64G}
 TIME=${TIME:-02:00:00}

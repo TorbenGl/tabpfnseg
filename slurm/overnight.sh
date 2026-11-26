@@ -14,7 +14,9 @@ if [ -z "${GPU_PARTITION:-}" ]; then
   [ -z "$GPU_PARTITION" ] && GPU_PARTITION=$(sinfo -h -o "%P %G" | grep -i "gpu" | head -1 | awk '{print $1}' | tr -d '*' || true)
 fi
 [ -z "$GPU_PARTITION" ] && { echo "no GPU partition found - set GPU_PARTITION=..."; sinfo -o "%P %G"; exit 1; }
-GRES=$(sinfo -h -p "$GPU_PARTITION" -o "%G" | grep -qi h200 && echo "gpu:h200:1" || echo "gpu:1")
+# GPU request: plain "gpu:1" (works whatever the cluster calls the GPU type); override with GPU_GRES=gpu:<type>:1
+GRES=${GPU_GRES:-gpu:1}
+sinfo -p "$GPU_PARTITION" -o "%P %G %c %m %l" | head -3
 echo "GPU partition: $GPU_PARTITION ($GRES)   CPU partition: $CPU_PARTITION"
 
 SMOKE=$(sbatch --parsable -p "$GPU_PARTITION" --gres="$GRES" slurm/smoke_gpu.sbatch)

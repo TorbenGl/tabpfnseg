@@ -2,8 +2,8 @@
 #SBATCH --job-name=tabpfnseg
 #SBATCH --partition=gpu-node
 #SBATCH --gres=gpu:1
-#SBATCH --cpus-per-task=16
-#SBATCH --mem=128G
+#SBATCH --cpus-per-task=8
+#SBATCH --mem=48G
 #SBATCH --time=12:00:00
 #SBATCH --output=logs/%x-%j.out
 # Usage: sbatch slurm/run_one.sbatch --dataset fss1000 --split val --purpose tune --method tabpfn ...

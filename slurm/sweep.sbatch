@@ -2,8 +2,8 @@
 #SBATCH --job-name=tabpfnseg-sweep
 #SBATCH --partition=gpu-node
 #SBATCH --gres=gpu:1
-#SBATCH --cpus-per-task=16
-#SBATCH --mem=128G
+#SBATCH --cpus-per-task=8
+#SBATCH --mem=48G
 #SBATCH --time=12:00:00
 #SBATCH --output=logs/%x-%A_%a.out
 # One line of the sweep file = one run (arguments for tabpfnseg.run). Submit with

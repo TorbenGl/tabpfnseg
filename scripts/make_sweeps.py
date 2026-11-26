@@ -88,7 +88,7 @@ bb = "dinov2r_l"
 for fname in ["ml6", "nb6"]:
     base = f"{TUNE} {common(bb)} --features '{FEATS[fname]}' --res patch"
     for ver in ["v3.5", "v3.5-fast", "v3", "v2.5"]:
-        for est in [1, 4, 8]:
+        for est in [1, 4, 8, 16]:
             s1c.append(f"{base} --method tabpfn --tabpfn_version {ver} --n_estimators {est}")
     for pca in [64, 256, 1024]:
         s1c.append(f"{base} --method tabpfn --pca {pca}")

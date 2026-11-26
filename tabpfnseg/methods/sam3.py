@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import numpy as np
 import torch
+import torch.nn.functional as F
 from PIL import Image
 from scipy import ndimage
 
@@ -120,8 +121,13 @@ class Sam3StitchSegmenter(_Sam3Base):
 class Sam3Refiner:
     """Coarse probability map -> box (+ peak point) prompt -> SAM3 tracker (PVS) mask."""
 
-    def __init__(self, device="cuda", repo="facebook/sam3"):
+    def __init__(self, device="cuda", repo="facebook/sam3", band=False, band_frac=0.02):
+        """band=True: SAM3 may only change pixels within band_frac * image size of the coarse boundary,
+        so it sharpens contours but cannot add/remove whole objects (region from the in-context learner,
+        boundary from SAM3)."""
         from transformers import Sam3TrackerModel, Sam3TrackerProcessor
+
+        self.band, self.band_frac = band, band_frac
 
         self.proc = Sam3TrackerProcessor.from_pretrained(repo)
         dtype = torch.bfloat16 if device.startswith("cuda") else torch.float32
@@ -139,5 +145,12 @@ class Sam3Refiner:
             out = self.model(**inputs, multimask_output=False)
         masks = self.proc.post_process_masks(out.pred_masks.float().cpu(), inputs["original_sizes"].cpu())[0]
         refined = masks.reshape(-1, *masks.shape[-2:]).any(0).numpy()
+        if self.band:
+            r = max(1, round(self.band_frac * max(coarse.shape)))
+            c = torch.from_numpy(coarse.astype(np.float32))[None, None]
+            dil = F.max_pool2d(c, 2 * r + 1, stride=1, padding=r)[0, 0].numpy() > 0.5
+            ero = -F.max_pool2d(-c, 2 * r + 1, stride=1, padding=r)[0, 0].numpy() > 0.5
+            ring = dil & ~ero
+            refined = np.where(ring, refined, coarse)
         # keep the coarse probability inside the refined mask, push outside below threshold
         return np.where(refined, np.maximum(prob, 0.5 + 1e-3), np.minimum(prob, 0.5 - 1e-3)).astype(np.float32)

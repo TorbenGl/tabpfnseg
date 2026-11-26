@@ -80,6 +80,10 @@ for m in ["seggpt", "sam3_stitch", "sam3_text"]:
 for m in ["tabpfn --n_estimators 8", "knn"]:
     t.append(f"{TUNE} --method {m} --features '{FEATS['nb6']};pos=1'")
     t.append(f"{TUNE} --method {m} --features '{FEATS['nb6']}' --anchors bw")
+# SAM3 refinement on the best TabPFN / kNN (plain replacement vs. boundary-band only), lines 36-39
+for m in ["tabpfn --n_estimators 8 --features 'layers=18,24;pools=1,5,g'", "knn --features 'layers=24'"]:
+    for ref in ["sam3", "sam3band"]:
+        t.append(f"{TUNE} --method {m} --refine {ref}")
 write("budget_tune", t)
 
 # ------------------------------------------------------------------ step 2: report (test sets)

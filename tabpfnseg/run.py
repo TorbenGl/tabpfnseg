@@ -48,7 +48,8 @@ def get_args(argv=None):
     g = ap.add_argument_group("method")
     g.add_argument("--method", default="tabpfn",
                    help="tabpfn | tabpfn_reg | logreg | knn | proto | oracle_grid | seggpt | sam3_text | sam3_stitch")
-    g.add_argument("--refine", default="none", choices=["none", "sam3"])
+    g.add_argument("--refine", default="none", choices=["none", "sam3", "sam3band"],
+                   help="sam3: replace the mask by SAM3's; sam3band: accept SAM3 only within a band around the coarse boundary")
     g.add_argument("--device", default="cuda" if torch.cuda.is_available() else "cpu")
 
     g = ap.add_argument_group("features (feature-table methods)")
@@ -181,10 +182,10 @@ def main(argv=None):
 
     method, minfo = build_method(a)
     refiner = None
-    if a.refine == "sam3":
+    if a.refine in ("sam3", "sam3band"):
         from .methods.sam3 import Sam3Refiner
 
-        refiner = Sam3Refiner(device=a.device)
+        refiner = Sam3Refiner(device=a.device, band=(a.refine == "sam3band"))
 
     name = run_name(a)
     out_dir = os.path.join(a.out, name)

@@ -114,20 +114,27 @@ def jbu_upsample(feat: torch.Tensor, guide_hr: torch.Tensor, out_hw: tuple[int, 
     uy = (torch.arange(H, device=dev) + 0.5) * h / H - 0.5
     ux = (torch.arange(W, device=dev) + 0.5) * w / W - 0.5
     cy, cx = uy.round().long(), ux.round().long()
-    num = torch.zeros(C, H, W, device=dev, dtype=feat.dtype)
-    den = torch.zeros(1, H, W, device=dev, dtype=feat.dtype)
+    # log-weights first, then subtract the per-pixel max before exp: with a sharp colour edge all
+    # (2r+1)^2 range weights can underflow to 0 in float32, which would zero the feature there.
+    logw, idx = [], []
     for dy in range(-radius, radius + 1):
         qy = (cy + dy).clamp(0, h - 1)
-        wy = torch.exp(-((uy - qy) ** 2) / (2 * sigma_spatial**2))
+        ly = -((uy - qy) ** 2) / (2 * sigma_spatial**2)
         for dx in range(-radius, radius + 1):
             qx = (cx + dx).clamp(0, w - 1)
-            wx = torch.exp(-((ux - qx) ** 2) / (2 * sigma_spatial**2))
+            lx = -((ux - qx) ** 2) / (2 * sigma_spatial**2)
             g_q = guide_lr[:, qy][:, :, qx]  # 3xHxW
-            wr = torch.exp(-((guide_hr - g_q) ** 2).sum(0) / (2 * sigma_range**2))
-            wgt = (wy[:, None] * wx[None, :] * wr)[None].to(feat.dtype)
-            num += wgt * feat[:, qy][:, :, qx]
-            den += wgt
-    return num / den.clamp_min(1e-8)
+            lr = -((guide_hr - g_q) ** 2).sum(0) / (2 * sigma_range**2)
+            logw.append(ly[:, None] + lx[None, :] + lr)
+            idx.append((qy, qx))
+    m = torch.stack(logw).amax(0)
+    num = torch.zeros(C, H, W, device=dev, dtype=feat.dtype)
+    den = torch.zeros(1, H, W, device=dev, dtype=feat.dtype)
+    for lw, (qy, qx) in zip(logw, idx):
+        wgt = torch.exp(lw - m)[None].to(feat.dtype)  # max weight per pixel is exactly 1 -> den >= 1
+        num += wgt * feat[:, qy][:, :, qx]
+        den += wgt
+    return num / den
 
 
 def upsample(feat: torch.Tensor, out_hw, mode: str, guide: torch.Tensor | None = None) -> torch.Tensor:

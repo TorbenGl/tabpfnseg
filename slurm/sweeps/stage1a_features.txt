@@ -18,7 +18,3 @@
 --dataset fss1000 --split val --purpose tune --episodes 600 --shots 1 --seed 0 --method logreg --backbone dinov3_l --img_size 512 --features 'layers=18,24;pools=1,5,g' --res patch --sampling all
 --dataset fss1000 --split val --purpose tune --episodes 600 --shots 1 --seed 0 --method knn --backbone dinov3_l --img_size 512 --features 'layers=18,24;pools=1,5,g' --res patch --sampling all
 --dataset fss1000 --split val --purpose tune --episodes 600 --shots 1 --seed 0 --method proto --backbone dinov3_l --img_size 512 --features 'layers=18,24;pools=1,5,g' --res patch --sampling all
---dataset fss1000 --split val --purpose tune --episodes 600 --shots 1 --seed 0 --method tabpfn --backbone dinov3_h --img_size 512 --features 'layers=-25,-19,-13,-7,-1' --res patch
---dataset fss1000 --split val --purpose tune --episodes 600 --shots 1 --seed 0 --method logreg --backbone dinov3_h --img_size 512 --features 'layers=-25,-19,-13,-7,-1' --res patch
---dataset fss1000 --split val --purpose tune --episodes 600 --shots 1 --seed 0 --method knn --backbone dinov3_h --img_size 512 --features 'layers=-25,-19,-13,-7,-1' --res patch
---dataset fss1000 --split val --purpose tune --episodes 600 --shots 1 --seed 0 --method proto --backbone dinov3_h --img_size 512 --features 'layers=-25,-19,-13,-7,-1' --res patch

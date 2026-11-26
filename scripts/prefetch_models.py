@@ -2,7 +2,7 @@
 
     export HF_TOKEN=...        # dinov3 + sam3 are gated: accept the licences on huggingface.co first
     export TABPFN_TOKEN=...    # https://ux.priorlabs.ai -> License tab (TabPFN-3.5 weights, non-commercial)
-    python scripts/prefetch_models.py --models dinov3_l dinov3_h seggpt sam3 tabpfn
+    python scripts/prefetch_models.py --models dinov3_l seggpt sam3 tabpfn
 
 Afterwards compute nodes can run fully offline with HF_HUB_OFFLINE=1 (set in slurm/common.sh).
 """
@@ -15,7 +15,7 @@ import torch
 from tabpfnseg.data.datasets import SyntheticDataset
 
 ap = argparse.ArgumentParser()
-ap.add_argument("--models", nargs="+", default=["dinov3_l", "dinov3_h", "seggpt", "sam3", "tabpfn"])
+ap.add_argument("--models", nargs="+", default=["dinov3_l", "seggpt", "sam3", "tabpfn"])
 ap.add_argument("--tabpfn_versions", nargs="+", default=["v3.5", "v3.5-fast"])
 ap.add_argument("--device", default="cuda" if torch.cuda.is_available() else "cpu")
 a = ap.parse_args()

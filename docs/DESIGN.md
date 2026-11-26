@@ -157,7 +157,6 @@ ViT‑L has 1024 dims per layer. At an equal budget of about 6144 dims we compar
 | `ml6` | `layers=4,8,12,16,20,24` | multi-layer: low-level texture/edges + semantics. Cross-domain FSS papers ("the devil is in low-level features") suggest this helps ISIC/Chest |
 | `nb6` | `layers=24;pools=1,3,5,9,17,g` | **the patch and the area around it**: the patch plus mean-pooled 3×3, 5×5, 9×9 and 17×17 neighbourhoods and the image mean. A cheap "gathering" of context that disambiguates parts from wholes |
 | `ml3nb2`, `ml2nb3` | mixed | both |
-| DINOv3‑H+ | `layers=-25,-19,-13,-7,-1` (5×1280 = 6400) | about the same budget, bigger backbone |
 
 Each block is L2-normalised, so blocks are on a comparable scale.
 

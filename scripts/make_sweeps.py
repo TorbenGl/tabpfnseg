@@ -60,9 +60,6 @@ write("stage0_sanity", s0)
 s1a = []
 for bb, (fname, f), head in itertools.product(BACKBONES, FEATS.items(), HEADS):
     s1a.append(f"{TUNE} --method {head} {common(bb)} --features '{f}' --res patch --sampling all")
-# bigger backbone at ~the same budget: DINOv3 ViT-H+/16 (1280-d) x 5 layers = 6400 (last 5 quarter-points, counted from the end)
-for head in HEADS:
-    s1a.append(f"{TUNE} --method {head} --backbone dinov3_h --img_size 512 --features 'layers=-25,-19,-13,-7,-1' --res patch")
 write("stage1a_features", s1a)
 
 # ----------------------------------------------------------------------------- stage 1b

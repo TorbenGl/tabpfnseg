@@ -75,6 +75,11 @@ for m in ["tabpfn --n_estimators 8", "knn"]:
 # dedicated segmenters on the same val episodes (Q2 reference + timing)
 for m in ["seggpt", "sam3_stitch", "sam3_text"]:
     t.append(f"--dataset fss1000 --split val --purpose tune --episodes 600 --limit {TUNE_EPISODES} --shots 1 --seed 0 --method {m}")
+# --- appended later (keep line numbers 1-31 stable for already-submitted arrays) ---
+# position columns (y, x) and black/white anchor images as extra background context
+for m in ["tabpfn --n_estimators 8", "knn"]:
+    t.append(f"{TUNE} --method {m} --features '{FEATS['nb6']};pos=1'")
+    t.append(f"{TUNE} --method {m} --features '{FEATS['nb6']}' --anchors bw")
 write("budget_tune", t)
 
 # ------------------------------------------------------------------ step 2: report (test sets)

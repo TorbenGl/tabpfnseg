@@ -61,6 +61,8 @@ def get_args(argv=None):
     g.add_argument("--max_ctx", type=int, default=10000, help="max context rows over all supports")
     g.add_argument("--ambig", default="", help="e.g. '0.2,0.8': drop support cells with mixed fg fraction")
     g.add_argument("--prior_correct", type=int, default=1)
+    g.add_argument("--anchors", default="none", choices=["none", "black", "white", "bw"],
+                   help="add the rows of an all-black / all-white image to the context, labelled background")
     g.add_argument("--pca", type=int, default=0, help="PCA dim fitted on context rows only (0 = off)")
 
     g = ap.add_argument_group("heads")
@@ -140,6 +142,12 @@ def run_name(a) -> str:
             parts.append("ambig" + a.ambig.replace(",", "-"))
         if a.method.startswith("tabpfn"):
             parts += [a.tabpfn_version, f"est{a.n_estimators}"]
+        if a.method == "logreg" and a.logreg_C != 1.0:   # non-default only: keeps existing run names valid
+            parts.append(f"C{a.logreg_C:g}")
+        if a.method == "knn" and a.knn_k != 16:
+            parts.append(f"k{a.knn_k}")
+        if getattr(a, "anchors", "none") != "none":
+            parts.append(f"anchor-{a.anchors}")
     if a.refine != "none":
         parts.append(f"refine-{a.refine}")
     return "_".join(p for p in parts if p)

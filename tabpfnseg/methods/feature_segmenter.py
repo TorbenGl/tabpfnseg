@@ -65,6 +65,17 @@ class FeatureSegmenter:
         soft = np.concatenate([fr.reshape(-1)[i] for fr, i in zip(fracs, idx)]).astype(np.float32)
         yc = soft if getattr(self.head, "uses_soft_labels", False) else (soft >= 0.5).astype(np.float32)
         Xq = fq.reshape(D, -1).T.cpu().numpy()
+        # optional synthetic "anchor" images (all black / all white) added to the context as background
+        n_anchor = 0
+        if getattr(a, "anchors", "none") != "none":
+            vals = {"black": [0], "white": [255], "bw": [0, 255]}[a.anchors]
+            for v in vals:
+                img = np.full((a.img_size, a.img_size, 3), v, np.uint8)
+                fa = self.fb.features(img, f"__anchor_{v}__").reshape(D, -1).T.cpu().numpy()
+                Xc = np.concatenate([Xc, fa])
+                yc = np.concatenate([yc, np.zeros(len(fa), np.float32)])
+                n_anchor += len(fa)
+            sampled_rate = float((yc >= 0.5).mean())  # prior correction maps back to the support's own rate
         t_feat = time.time() - t0
 
         Xc, Xq = pca_fit_transform(Xc, Xq, a.pca, a.device)
@@ -74,7 +85,7 @@ class FeatureSegmenter:
         if a.prior_correct:
             p = prior_correct(p, sampled_rate, true_rate)
         prob = self.to_mask_res(p.reshape(H, W), q_img.shape[:2])
-        stats = {"n_ctx": int(len(yc)), "ctx_fg_rate": float(sampled_rate), "dim": int(Xc.shape[1]),
+        stats = {"n_ctx": int(len(yc)), "n_anchor": n_anchor, "ctx_fg_rate": float(sampled_rate), "dim": int(Xc.shape[1]),
                  "n_query_rows": int(len(Xq)), "t_feat": t_feat, "t_head": t_head}
         return prob, stats
 

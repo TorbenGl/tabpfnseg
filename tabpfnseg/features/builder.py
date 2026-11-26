@@ -38,6 +38,7 @@ class FeatureSpec:
     pools: list[str] = field(default_factory=lambda: ["1"])
     rgb: bool = False
     l2: bool = True
+    pos: bool = False  # + 2 columns: (y, x) of the cell centre, in [-0.5, 0.5]
 
     @classmethod
     def parse(cls, s: str) -> "FeatureSpec":
@@ -58,12 +59,14 @@ class FeatureSpec:
                 spec.rgb = bool(int(v))
             elif k == "l2":
                 spec.l2 = bool(int(v))
+            elif k == "pos":
+                spec.pos = bool(int(v))
             else:
                 raise ValueError(f"unknown feature key {k}")
         return spec
 
     def dim(self, backbone_dim: int) -> int:
-        return len(self.layers) * len(self.pools) * backbone_dim + (6 if self.rgb else 0)
+        return len(self.layers) * len(self.pools) * backbone_dim + (6 if self.rgb else 0) + (2 if self.pos else 0)
 
 
 @dataclass
@@ -193,6 +196,13 @@ class FeatureBuilder:
             lab2 = F.interpolate((guide**2)[None], size=self.out_hw, mode="area")[0]
             std = (lab2 - lab**2).clamp_min(0).sqrt()
             feat = torch.cat([feat, lab, std], 0)
+        if self.spec.pos:
+            # (y, x) of every cell centre in [-0.5, 0.5]. Same columns for every head; magnitude ~ one
+            # L2-normalised feature block, so cosine heads (knn/proto) are not dominated by position.
+            H, W = feat.shape[-2:]
+            yy = (torch.arange(H, device=feat.device, dtype=feat.dtype) + 0.5) / H - 0.5
+            xx = (torch.arange(W, device=feat.device, dtype=feat.dtype) + 0.5) / W - 0.5
+            feat = torch.cat([feat, yy[:, None].expand(H, W)[None], xx[None, :].expand(H, W)[None]], 0)
         if key is not None:
             self._cache[key] = feat
             self._cache_order.append(key)

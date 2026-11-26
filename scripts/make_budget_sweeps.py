@@ -30,11 +30,11 @@ FEATS = {
 TUNE = f"--dataset fss1000 --split val --purpose tune --episodes 600 --limit {TUNE_EPISODES} --shots 1 --seed 0 {BB}"
 
 # >>> EDIT after the tune step (choose on FSS-1000 val only) <<<
-BEST = {
-    "tabpfn": "--method tabpfn --n_estimators 8 --features 'layers=24;pools=1,3,5,9,17,g'",
-    "knn": "--method knn --features 'layers=24;pools=1,3,5,9,17,g'",
-    "logreg": "--method logreg --logreg_C 0.1 --features 'layers=24;pools=1,3,5,9,17,g'",
-    "proto": "--method proto --features 'layers=24'",
+BEST = {  # chosen on FSS-1000 val, 1-shot, 300 episodes (budget_tune, 2026-11-26)
+    "tabpfn": "--method tabpfn --n_estimators 8 --features 'layers=18,24;pools=1,5,g'",   # 79.35 (best TabPFN; est16 +0.2 only)
+    "knn": "--method knn --features 'layers=24'",                                          # 81.39 (best kNN)
+    "logreg": "--method logreg --logreg_C 0.01 --features 'layers=24;pools=1,3,5,9,17,g'", # 74.84 (best C)
+    "proto": "--method proto --features 'layers=24'",                                      # 74.55
 }
 
 

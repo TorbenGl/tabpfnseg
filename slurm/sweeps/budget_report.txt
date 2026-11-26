@@ -1,0 +1,56 @@
+--dataset fss1000 --split test --episodes 1000 --shots 1 --seed 0 --backbone dinov3_l --img_size 512 --method tabpfn --n_estimators 8 --features 'layers=24;pools=1,3,5,9,17,g'
+--dataset fss1000 --split test --episodes 1000 --shots 1 --seed 0 --backbone dinov3_l --img_size 512 --method knn --features 'layers=24;pools=1,3,5,9,17,g'
+--dataset fss1000 --split test --episodes 1000 --shots 1 --seed 0 --backbone dinov3_l --img_size 512 --method logreg --logreg_C 0.1 --features 'layers=24;pools=1,3,5,9,17,g'
+--dataset fss1000 --split test --episodes 1000 --shots 1 --seed 0 --backbone dinov3_l --img_size 512 --method proto --features 'layers=24'
+--dataset fss1000 --split test --episodes 1000 --shots 1 --seed 0 --method seggpt
+--dataset fss1000 --split test --episodes 1000 --shots 1 --seed 0 --method sam3_stitch
+--dataset fss1000 --split test --episodes 1000 --shots 1 --seed 0 --method sam3_text
+--dataset fss1000 --split test --episodes 1000 --shots 5 --seed 0 --backbone dinov3_l --img_size 512 --method tabpfn --n_estimators 8 --features 'layers=24;pools=1,3,5,9,17,g'
+--dataset fss1000 --split test --episodes 1000 --shots 5 --seed 0 --backbone dinov3_l --img_size 512 --method knn --features 'layers=24;pools=1,3,5,9,17,g'
+--dataset fss1000 --split test --episodes 1000 --shots 5 --seed 0 --backbone dinov3_l --img_size 512 --method logreg --logreg_C 0.1 --features 'layers=24;pools=1,3,5,9,17,g'
+--dataset fss1000 --split test --episodes 1000 --shots 5 --seed 0 --backbone dinov3_l --img_size 512 --method proto --features 'layers=24'
+--dataset fss1000 --split test --episodes 1000 --shots 5 --seed 0 --method seggpt
+--dataset fss1000 --split test --episodes 1000 --shots 5 --seed 0 --method sam3_stitch
+--dataset fss1000 --split test --episodes 1000 --shots 5 --seed 0 --method sam3_text
+--dataset deepglobe --split test --episodes 600 --shots 1 --seed 0 --backbone dinov3_l --img_size 512 --method tabpfn --n_estimators 8 --features 'layers=24;pools=1,3,5,9,17,g'
+--dataset deepglobe --split test --episodes 600 --shots 1 --seed 0 --backbone dinov3_l --img_size 512 --method knn --features 'layers=24;pools=1,3,5,9,17,g'
+--dataset deepglobe --split test --episodes 600 --shots 1 --seed 0 --backbone dinov3_l --img_size 512 --method logreg --logreg_C 0.1 --features 'layers=24;pools=1,3,5,9,17,g'
+--dataset deepglobe --split test --episodes 600 --shots 1 --seed 0 --backbone dinov3_l --img_size 512 --method proto --features 'layers=24'
+--dataset deepglobe --split test --episodes 600 --shots 1 --seed 0 --method seggpt
+--dataset deepglobe --split test --episodes 600 --shots 1 --seed 0 --method sam3_stitch
+--dataset deepglobe --split test --episodes 600 --shots 1 --seed 0 --method sam3_text
+--dataset deepglobe --split test --episodes 600 --shots 5 --seed 0 --backbone dinov3_l --img_size 512 --method tabpfn --n_estimators 8 --features 'layers=24;pools=1,3,5,9,17,g'
+--dataset deepglobe --split test --episodes 600 --shots 5 --seed 0 --backbone dinov3_l --img_size 512 --method knn --features 'layers=24;pools=1,3,5,9,17,g'
+--dataset deepglobe --split test --episodes 600 --shots 5 --seed 0 --backbone dinov3_l --img_size 512 --method logreg --logreg_C 0.1 --features 'layers=24;pools=1,3,5,9,17,g'
+--dataset deepglobe --split test --episodes 600 --shots 5 --seed 0 --backbone dinov3_l --img_size 512 --method proto --features 'layers=24'
+--dataset deepglobe --split test --episodes 600 --shots 5 --seed 0 --method seggpt
+--dataset deepglobe --split test --episodes 600 --shots 5 --seed 0 --method sam3_stitch
+--dataset deepglobe --split test --episodes 600 --shots 5 --seed 0 --method sam3_text
+--dataset isic --split test --episodes 600 --shots 1 --seed 0 --backbone dinov3_l --img_size 512 --method tabpfn --n_estimators 8 --features 'layers=24;pools=1,3,5,9,17,g'
+--dataset isic --split test --episodes 600 --shots 1 --seed 0 --backbone dinov3_l --img_size 512 --method knn --features 'layers=24;pools=1,3,5,9,17,g'
+--dataset isic --split test --episodes 600 --shots 1 --seed 0 --backbone dinov3_l --img_size 512 --method logreg --logreg_C 0.1 --features 'layers=24;pools=1,3,5,9,17,g'
+--dataset isic --split test --episodes 600 --shots 1 --seed 0 --backbone dinov3_l --img_size 512 --method proto --features 'layers=24'
+--dataset isic --split test --episodes 600 --shots 1 --seed 0 --method seggpt
+--dataset isic --split test --episodes 600 --shots 1 --seed 0 --method sam3_stitch
+--dataset isic --split test --episodes 600 --shots 1 --seed 0 --method sam3_text
+--dataset isic --split test --episodes 600 --shots 5 --seed 0 --backbone dinov3_l --img_size 512 --method tabpfn --n_estimators 8 --features 'layers=24;pools=1,3,5,9,17,g'
+--dataset isic --split test --episodes 600 --shots 5 --seed 0 --backbone dinov3_l --img_size 512 --method knn --features 'layers=24;pools=1,3,5,9,17,g'
+--dataset isic --split test --episodes 600 --shots 5 --seed 0 --backbone dinov3_l --img_size 512 --method logreg --logreg_C 0.1 --features 'layers=24;pools=1,3,5,9,17,g'
+--dataset isic --split test --episodes 600 --shots 5 --seed 0 --backbone dinov3_l --img_size 512 --method proto --features 'layers=24'
+--dataset isic --split test --episodes 600 --shots 5 --seed 0 --method seggpt
+--dataset isic --split test --episodes 600 --shots 5 --seed 0 --method sam3_stitch
+--dataset isic --split test --episodes 600 --shots 5 --seed 0 --method sam3_text
+--dataset chestx --split test --episodes 600 --shots 1 --seed 0 --backbone dinov3_l --img_size 512 --method tabpfn --n_estimators 8 --features 'layers=24;pools=1,3,5,9,17,g'
+--dataset chestx --split test --episodes 600 --shots 1 --seed 0 --backbone dinov3_l --img_size 512 --method knn --features 'layers=24;pools=1,3,5,9,17,g'
+--dataset chestx --split test --episodes 600 --shots 1 --seed 0 --backbone dinov3_l --img_size 512 --method logreg --logreg_C 0.1 --features 'layers=24;pools=1,3,5,9,17,g'
+--dataset chestx --split test --episodes 600 --shots 1 --seed 0 --backbone dinov3_l --img_size 512 --method proto --features 'layers=24'
+--dataset chestx --split test --episodes 600 --shots 1 --seed 0 --method seggpt
+--dataset chestx --split test --episodes 600 --shots 1 --seed 0 --method sam3_stitch
+--dataset chestx --split test --episodes 600 --shots 1 --seed 0 --method sam3_text
+--dataset chestx --split test --episodes 600 --shots 5 --seed 0 --backbone dinov3_l --img_size 512 --method tabpfn --n_estimators 8 --features 'layers=24;pools=1,3,5,9,17,g'
+--dataset chestx --split test --episodes 600 --shots 5 --seed 0 --backbone dinov3_l --img_size 512 --method knn --features 'layers=24;pools=1,3,5,9,17,g'
+--dataset chestx --split test --episodes 600 --shots 5 --seed 0 --backbone dinov3_l --img_size 512 --method logreg --logreg_C 0.1 --features 'layers=24;pools=1,3,5,9,17,g'
+--dataset chestx --split test --episodes 600 --shots 5 --seed 0 --backbone dinov3_l --img_size 512 --method proto --features 'layers=24'
+--dataset chestx --split test --episodes 600 --shots 5 --seed 0 --method seggpt
+--dataset chestx --split test --episodes 600 --shots 5 --seed 0 --method sam3_stitch
+--dataset chestx --split test --episodes 600 --shots 5 --seed 0 --method sam3_text

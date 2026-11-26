@@ -40,6 +40,15 @@ def mask_boxes(mask: np.ndarray, max_boxes: int = 5, min_area_frac: float = 0.00
     return boxes
 
 
+def _cast_floats(inputs, dtype):
+    """bf16 model on GPU: every floating input (pixels, boxes, points) must match the weights' dtype.
+    original_sizes / reshaped_input_sizes are integer tensors and stay untouched."""
+    for k, v in inputs.items():
+        if torch.is_tensor(v) and v.is_floating_point():
+            inputs[k] = v.to(dtype)
+    return inputs
+
+
 class _Sam3Base:
     def __init__(self, device="cuda", repo="facebook/sam3", threshold=0.4, mask_threshold=0.5):
         from transformers import Sam3Model, Sam3Processor
@@ -58,8 +67,7 @@ class _Sam3Base:
             kw["input_boxes"] = [boxes]
             kw["input_boxes_labels"] = [[1] * len(boxes)]
         inputs = self.proc(images=Image.fromarray(image), return_tensors="pt", **kw).to(self.device)
-        if "pixel_values" in inputs:
-            inputs["pixel_values"] = inputs["pixel_values"].to(self.dtype)
+        inputs = _cast_floats(inputs, self.dtype)
         with torch.no_grad():
             out = self.model(**inputs)
         res = self.proc.post_process_instance_segmentation(
@@ -126,7 +134,7 @@ class Sam3Refiner:
         if not boxes:
             return prob
         inputs = self.proc(images=Image.fromarray(q_img), input_boxes=[boxes], return_tensors="pt").to(self.device)
-        inputs["pixel_values"] = inputs["pixel_values"].to(self.dtype)
+        inputs = _cast_floats(inputs, self.dtype)
         with torch.no_grad():
             out = self.model(**inputs, multimask_output=False)
         masks = self.proc.post_process_masks(out.pred_masks.float().cpu(), inputs["original_sizes"].cpu())[0]

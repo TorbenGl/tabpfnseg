@@ -77,8 +77,13 @@ def build_fss1000(root: str, split: str = "test") -> FewShotDataset:
     split_file = SPLIT_DIR / "fss" / f"{split}.txt"
     classes = [c.strip() for c in split_file.read_text().splitlines() if c.strip()]
     ds = FewShotDataset("fss1000", root, split)
+    excl_file = SPLIT_DIR / "fss" / "exclude.txt"
+    exclude = set()
+    if excl_file.exists():
+        exclude = {ln.split("#")[0].strip() for ln in excl_file.read_text().splitlines()} - {""}
     for c in classes:
-        imgs = sorted(glob.glob(os.path.join(base, c, "*.jpg")))
+        imgs = sorted(p for p in glob.glob(os.path.join(base, c, "*.jpg"))
+                      if f"{c}/{os.path.basename(p)}" not in exclude)
         pairs = [(ds._rel(p), ds._rel(p[:-4] + ".png")) for p in imgs if os.path.exists(p[:-4] + ".png")]
         if pairs:
             ds.classes.append(c)

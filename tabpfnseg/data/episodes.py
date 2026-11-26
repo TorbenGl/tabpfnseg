@@ -120,7 +120,10 @@ def get_or_create_episodes(ds, shots, n_episodes, seed, out_dir="episodes", dedu
     path = episode_path(out_dir, ds, shots, seed, n)
     if os.path.exists(path):
         eps, meta = load_episodes(path)
-        return eps, path
+        valid = {it[0] for c in ds.classes for it in ds.items[c]}
+        if all(e.query[0] in valid and all(s[0] in valid for s in e.supports) for e in eps):
+            return eps, path
+        print(f"[episodes] {path} references images no longer in the dataset (exclude list?) -> regenerating")
     eps = make_episodes(ds, shots, n_episodes, seed, dedup_hamming)
     meta = {"dataset": ds.name, "split": ds.split, "shots": shots, "seed": seed, "n": len(eps),
             "dedup_hamming": dedup_hamming}

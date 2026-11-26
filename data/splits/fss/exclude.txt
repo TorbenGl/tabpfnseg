@@ -1,0 +1,4 @@
+# Images dropped from FSS-1000 (path relative to FSS-1000/). One per line; '#' starts a comment.
+# Same photo as test/american_alligator/1.jpg (pixel corr 0.999, scripts/check_leakage.py) -> drop the VAL copy,
+# so the test split stays the standard HSNet/PATNet one.
+crocodile/7.jpg

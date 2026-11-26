@@ -98,6 +98,14 @@ python -m tabpfnseg.run --dataset synthetic --backbone dummy --img_size 160 --me
    ```bash
    python scripts/make_sweeps.py && bash slurm/submit_sweep.sh slurm/sweeps/stage2_report.txt 8
    ```
+   **Without sbatch (srun only)**: run the smoke job and the sweeps through srun on a given partition.
+   `srun_sweep.sh` starts one srun job per sweep line, with N in parallel, and blocks, so start it in tmux:
+   ```bash
+   PARTITION=compute-node bash slurm/srun.sh bash slurm/smoke_gpu.sbatch
+   ```
+   ```bash
+   PARTITION=compute-node bash slurm/srun_sweep.sh slurm/sweeps/stage0_sanity.txt 8
+   ```
 10. Build the results table:
     ```bash
     python scripts/aggregate.py results --out results/table.md

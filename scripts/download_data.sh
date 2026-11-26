@@ -3,7 +3,7 @@
 #   FSS-1000   natural objects, 240 held-out test classes  (Google Drive, via gdown)
 #   Deepglobe  satellite land cover, PATNet preprocessed  (Google Drive, via gdown)
 #   ISIC-2018  dermoscopy, task 1                          (public S3)
-#   Chest X-ray lungs (Shenzhen + Montgomery)              (Kaggle CLI, needs ~/.kaggle/kaggle.json)
+#   Chest X-ray lungs (Shenzhen + Montgomery)              (Kaggle CLI, needs ~/.kaggle/kaggle.json or ~/.kaggle/access_token)
 # Run on a login node (compute nodes are often offline). Re-running skips what exists.
 set -euo pipefail
 REPO=$(cd "$(dirname "$0")/.." && pwd)
@@ -36,7 +36,7 @@ if [ ! -d ISIC ]; then
 fi
 
 if [ ! -d LungSegmentation ]; then
-  if [ ! -f ~/.kaggle/kaggle.json ] && [ -z "${KAGGLE_USERNAME:-}" ] && [ -z "${KAGGLE_API_TOKEN:-}" ]; then
+  if [ ! -f ~/.kaggle/kaggle.json ] && [ ! -f ~/.kaggle/access_token ] && [ -z "${KAGGLE_USERNAME:-}" ] && [ -z "${KAGGLE_API_TOKEN:-}" ]; then
     echo "Chest X-ray needs Kaggle credentials (~/.kaggle/kaggle.json, see README) - skipping"; else
   kaggle datasets download -d nikhilpandey360/chest-xray-masks-and-labels -p lung_tmp --unzip
   # kaggle archive: Lung Segmentation/{CXR_png,masks}

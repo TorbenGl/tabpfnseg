@@ -1,5 +1,6 @@
 # Sourced by every sbatch script. Adapt the module/conda lines to your cluster.
-set -euo pipefail
+# strict mode only for batch jobs: in an interactive shell it would close the shell on any error
+[[ $- == *i* ]] || set -euo pipefail
 REPO=${REPO:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}
 cd "$REPO"
 # module load cuda/12.4  # <- cluster specific, uncomment / adapt

@@ -19,12 +19,21 @@ if [ ! -d FSS-1000 ]; then
   # the archive unpacks to fewshot_data/ in some versions
   [ -d fewshot_data ] && mv fewshot_data FSS-1000 || true
 fi
+# normalise: FSS-1000/fewshot_data/<class> -> FSS-1000/<class>
+if [ -d FSS-1000/fewshot_data ]; then
+  find FSS-1000/fewshot_data -mindepth 1 -maxdepth 1 -exec mv -t FSS-1000/ {} + && rmdir FSS-1000/fewshot_data
+fi
 
 if [ ! -d Deepglobe ]; then
   gdown 12Dljy04maKIim3mZsR50CEOC3_ROZLCg -O deepglobe.zip
   unzip -q deepglobe.zip && rm deepglobe.zip
-  echo "Deepglobe: expected layout Deepglobe/04_train_cat/<1..6>/test/{origin,groundtruth}; move folders if the archive differs."
 fi
+# normalise: Deepglobe/<1..6>/test -> Deepglobe/04_train_cat/<1..6>/test
+if [ -d Deepglobe/1/test ] && [ ! -d Deepglobe/04_train_cat ]; then
+  mkdir -p Deepglobe/04_train_cat && mv Deepglobe/[1-6] Deepglobe/04_train_cat/
+fi
+[ -d Deepglobe/04_train_cat/1/test/origin ] || echo "Deepglobe: expected Deepglobe/04_train_cat/<1..6>/test/{origin,groundtruth}; move folders if the archive differs."
+rm -rf __MACOSX
 
 if [ ! -d ISIC ]; then
   mkdir -p ISIC && cd ISIC

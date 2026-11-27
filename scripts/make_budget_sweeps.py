@@ -131,3 +131,13 @@ t5.append(f"{TUNE5} --method logreg --logreg_C 0.01 --features '{FEATS['nb6']}'"
 for m in ["seggpt", "sam3_stitch", "sam3_text"]:     # Q2 references
     t5.append(f"--dataset fss1000 --split val --purpose tune --episodes 600 --limit {TUNE_EPISODES} --shots 5 --seed 0 --method {m}")
 write("budget_tune5", t5)
+
+# ------------------------------------------------------------------ report + SAM3 band refinement (report_refine.txt)
+# Chosen on FSS-1000 val (budget_tune lines 36-39): sam3band > sam3 > none for both TabPFN (+4.5) and kNN (+4.9).
+rr = []
+for ds, eps in REPORT_EPISODES.items():
+    for shots in REPORT_SHOTS:
+        base = f"--dataset {ds} --split test --episodes {eps} --shots {shots} --seed 0 {BB}"
+        for key in ["tabpfn", "knn"]:
+            rr.append(f"{base} {BEST[key]} --refine sam3band")
+write("report_refine", rr)

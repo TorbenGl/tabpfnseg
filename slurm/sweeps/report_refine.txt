@@ -1,0 +1,16 @@
+--dataset fss1000 --split test --episodes 1000 --shots 1 --seed 0 --backbone dinov3_l --img_size 512 --method tabpfn --n_estimators 8 --features 'layers=18,24;pools=1,5,g' --refine sam3band
+--dataset fss1000 --split test --episodes 1000 --shots 1 --seed 0 --backbone dinov3_l --img_size 512 --method knn --features 'layers=24' --refine sam3band
+--dataset fss1000 --split test --episodes 1000 --shots 5 --seed 0 --backbone dinov3_l --img_size 512 --method tabpfn --n_estimators 8 --features 'layers=18,24;pools=1,5,g' --refine sam3band
+--dataset fss1000 --split test --episodes 1000 --shots 5 --seed 0 --backbone dinov3_l --img_size 512 --method knn --features 'layers=24' --refine sam3band
+--dataset deepglobe --split test --episodes 600 --shots 1 --seed 0 --backbone dinov3_l --img_size 512 --method tabpfn --n_estimators 8 --features 'layers=18,24;pools=1,5,g' --refine sam3band
+--dataset deepglobe --split test --episodes 600 --shots 1 --seed 0 --backbone dinov3_l --img_size 512 --method knn --features 'layers=24' --refine sam3band
+--dataset deepglobe --split test --episodes 600 --shots 5 --seed 0 --backbone dinov3_l --img_size 512 --method tabpfn --n_estimators 8 --features 'layers=18,24;pools=1,5,g' --refine sam3band
+--dataset deepglobe --split test --episodes 600 --shots 5 --seed 0 --backbone dinov3_l --img_size 512 --method knn --features 'layers=24' --refine sam3band
+--dataset isic --split test --episodes 600 --shots 1 --seed 0 --backbone dinov3_l --img_size 512 --method tabpfn --n_estimators 8 --features 'layers=18,24;pools=1,5,g' --refine sam3band
+--dataset isic --split test --episodes 600 --shots 1 --seed 0 --backbone dinov3_l --img_size 512 --method knn --features 'layers=24' --refine sam3band
+--dataset isic --split test --episodes 600 --shots 5 --seed 0 --backbone dinov3_l --img_size 512 --method tabpfn --n_estimators 8 --features 'layers=18,24;pools=1,5,g' --refine sam3band
+--dataset isic --split test --episodes 600 --shots 5 --seed 0 --backbone dinov3_l --img_size 512 --method knn --features 'layers=24' --refine sam3band
+--dataset chestx --split test --episodes 600 --shots 1 --seed 0 --backbone dinov3_l --img_size 512 --method tabpfn --n_estimators 8 --features 'layers=18,24;pools=1,5,g' --refine sam3band
+--dataset chestx --split test --episodes 600 --shots 1 --seed 0 --backbone dinov3_l --img_size 512 --method knn --features 'layers=24' --refine sam3band
+--dataset chestx --split test --episodes 600 --shots 5 --seed 0 --backbone dinov3_l --img_size 512 --method tabpfn --n_estimators 8 --features 'layers=18,24;pools=1,5,g' --refine sam3band
+--dataset chestx --split test --episodes 600 --shots 5 --seed 0 --backbone dinov3_l --img_size 512 --method knn --features 'layers=24' --refine sam3band

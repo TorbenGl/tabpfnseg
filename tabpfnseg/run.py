@@ -146,6 +146,8 @@ def run_name(a) -> str:
     if a.method in FEATURE_HEADS or a.method == "oracle_grid":
         feat = a.features.replace(";", "_").replace("=", "").replace(",", "-")
         parts += [a.backbone, feat, a.res, a.up if a.res != "patch" else "", a.sampling, f"ctx{a.max_ctx}"]
+        if a.img_size != 512:  # non-default input size (e.g. 1024) must not collide with the 512 run
+            parts.append(f"px{a.img_size}")
         if a.pca:
             parts.append(f"pca{a.pca}")
         if a.ambig:

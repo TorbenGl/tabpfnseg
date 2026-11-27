@@ -96,3 +96,25 @@ for ds, eps in REPORT_EPISODES.items():
         for m in ["seggpt", "sam3_stitch", "sam3_text"]:
             r.append(f"{base} --method {m}")
 write("budget_report", r)
+
+# ------------------------------------------------------------------ FROST preprocessing check (frost_tune.txt)
+# FROST recipe (arXiv 2606.31136) as preprocessing for every learner: positional debiasing (r=250),
+# within-class shrinkage whitening (lambda=0.95), horizontally flipped supports. Fixed literature values, no tuning.
+TABPFN_BEST = "tabpfn --n_estimators 8 --features 'layers=18,24;pools=1,5,g'"
+LEARNERS = [TABPFN_BEST, "knn --features 'layers=24'", "proto --features 'layers=24'"]
+TUNE5 = TUNE.replace("--shots 1", "--shots 5")
+f = []
+for m in LEARNERS:                                   # 1) FSS-1000 val 1-shot, FROST on (baselines: budget_tune)
+    f.append(f"{TUNE} --method {m} --frost 1")
+for flag in ["--debias 250", "--whiten 0.95", "--support_flip 1"]:   # 2) ablation: one component at a time
+    f.append(f"{TUNE} --method {TABPFN_BEST} {flag}")
+for m in LEARNERS:                                   # 3) FSS-1000 val 5-shot, FROST off / on
+    f.append(f"{TUNE5} --method {m}")
+    f.append(f"{TUNE5} --method {m} --frost 1")
+for m in [TABPFN_BEST, "knn --features 'layers=24'"]:  # 4) FROST resolution: 1024 px -> 64x64 tokens
+    f.append(f"{TUNE.replace('--img_size 512', '--img_size 1024')} --method {m} --frost 1")
+# 5) Deepglobe test, same 600 episodes as the report (baselines = report). Fixed recipe, not tuned on test.
+for shots in [1, 5]:
+    for m in LEARNERS:
+        f.append(f"--dataset deepglobe --split test --episodes 600 --shots {shots} --seed 0 {BB} --method {m} --frost 1")
+write("frost_tune", f)

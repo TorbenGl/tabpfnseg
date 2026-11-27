@@ -62,6 +62,11 @@ def get_args(argv=None):
     g.add_argument("--max_ctx", type=int, default=10000, help="max context rows over all supports")
     g.add_argument("--ambig", default="", help="e.g. '0.2,0.8': drop support cells with mixed fg fraction")
     g.add_argument("--prior_correct", type=int, default=1)
+    g.add_argument("--debias", type=int, default=0, help="FROST/INSID3 positional debiasing rank (0 = off; FROST: 250)")
+    g.add_argument("--whiten", type=float, default=0.0,
+                   help="FROST within-class shrinkage whitening, intensity lambda (0 = off; FROST: 0.95)")
+    g.add_argument("--support_flip", type=int, default=0, help="add horizontally flipped supports (FROST)")
+    g.add_argument("--frost", type=int, default=0, help="shortcut: --debias 250 --whiten 0.95 --support_flip 1")
     g.add_argument("--anchors", default="none", choices=["none", "black", "white", "bw"],
                    help="add the rows of an all-black / all-white image to the context, labelled background")
     g.add_argument("--pca", type=int, default=0, help="PCA dim fitted on context rows only (0 = off)")
@@ -81,6 +86,10 @@ def get_args(argv=None):
     g.add_argument("--skip_done", type=int, default=0, help="exit if <out>/<name>/summary.json exists")
     a = ap.parse_args(argv)
     a.n_estimators = int(a.n_estimators) if a.n_estimators.isdigit() else a.n_estimators
+    if a.frost:
+        a.debias = a.debias or 250
+        a.whiten = a.whiten or 0.95
+        a.support_flip = 1
     return a
 
 
@@ -105,7 +114,7 @@ def build_method(a):
 
     if a.method in FEATURE_HEADS or a.method == "oracle_grid":
         bb = build_backbone(a.backbone, a.device)
-        fb = FeatureBuilder(bb, FeatureSpec.parse(a.features), ResSpec.parse(a.res, a.up), a.img_size)
+        fb = FeatureBuilder(bb, FeatureSpec.parse(a.features), ResSpec.parse(a.res, a.up), a.img_size, debias=a.debias)
         if a.method == "oracle_grid":
             from .methods.feature_segmenter import OracleGrid
 
@@ -149,6 +158,12 @@ def run_name(a) -> str:
             parts.append(f"k{a.knn_k}")
         if getattr(a, "anchors", "none") != "none":
             parts.append(f"anchor-{a.anchors}")
+        if a.debias:
+            parts.append(f"deb{a.debias}")
+        if a.whiten:
+            parts.append(f"wh{a.whiten:g}")
+        if a.support_flip:
+            parts.append("flip")
     if a.refine != "none":
         parts.append(f"refine-{a.refine}")
     return "_".join(p for p in parts if p)

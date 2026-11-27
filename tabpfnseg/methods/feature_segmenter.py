@@ -41,6 +41,38 @@ def prior_correct(p: np.ndarray, sampled_rate: float, true_rate: float, eps: flo
     return odds / (1 + odds)
 
 
+def within_class_whiten(Xc: np.ndarray, yc: np.ndarray, Xq: np.ndarray, lam: float, device: str):
+    """FROST-style shrinkage whitening, fit on the CONTEXT rows only.
+    Sigma_W = within-class scatter of fg and bg (each centred on its own mean, so the fg-bg mean difference
+    survives), shrunk towards mu*I:  Sigma = (1-lam) Sigma_W + lam mu I.  Returns X Sigma^{-1/2}."""
+    y = yc >= 0.5
+    if y.all() or (~y).all():
+        return Xc, Xq
+    dev = device if torch.cuda.is_available() or device == "cpu" else "cpu"
+    Xc_t = torch.from_numpy(Xc).float().to(dev)
+    Xq_t = torch.from_numpy(Xq).float().to(dev)
+    yt = torch.from_numpy(y).to(dev)
+    A = torch.cat([Xc_t[yt] - Xc_t[yt].mean(0), Xc_t[~yt] - Xc_t[~yt].mean(0)])  # N x D
+    N, D = A.shape
+    denom = max(N - 2, 1)
+    mu = float((A ** 2).sum()) / (denom * D)
+    if N <= D:  # eigendecomposition of the small N x N Gram matrix
+        e, Ug = torch.linalg.eigh(A @ A.T / denom)
+        keep = e > 1e-8 * e.max()
+        e, Ug = e[keep], Ug[:, keep]
+        V = (A.T @ Ug) / torch.sqrt(e * denom)[None, :]       # D x k orthonormal
+    else:
+        e, V = torch.linalg.eigh(A.T @ A / denom)
+    c0 = (lam * mu) ** -0.5
+    d = ((1 - lam) * e + lam * mu) ** -0.5
+
+    def apply(X):
+        P = X @ V
+        return c0 * X + (P * (d - c0)[None, :]) @ V.T
+
+    return apply(Xc_t).cpu().numpy(), apply(Xq_t).cpu().numpy()
+
+
 class FeatureSegmenter:
     def __init__(self, builder: FeatureBuilder, head, args):
         self.fb, self.head, self.args = builder, head, args
@@ -55,6 +87,11 @@ class FeatureSegmenter:
     def predict(self, sup_imgs, sup_masks, q_img, sup_keys=None, q_key=None, q_mask_oracle=None, **_):
         a = self.args
         t0 = time.time()
+        if getattr(a, "support_flip", 0):  # FROST: horizontal flip of every support doubles the context
+            keys = list(sup_keys) if sup_keys else [None] * len(sup_imgs)
+            sup_imgs = list(sup_imgs) + [np.ascontiguousarray(im[:, ::-1]) for im in sup_imgs]
+            sup_masks = list(sup_masks) + [np.ascontiguousarray(m[:, ::-1]) for m in sup_masks]
+            sup_keys = keys + [None if k is None else f"{k}#hflip" for k in keys]
         feats = [self.fb.features(im, k) for im, k in zip(sup_imgs, sup_keys or [None] * len(sup_imgs))]
         fq = self.fb.features(q_img, q_key)
         fracs = [self.fb.mask_fraction(m).numpy() for m in sup_masks]
@@ -76,6 +113,8 @@ class FeatureSegmenter:
                 yc = np.concatenate([yc, np.zeros(len(fa), np.float32)])
                 n_anchor += len(fa)
             sampled_rate = float((yc >= 0.5).mean())  # prior correction maps back to the support's own rate
+        if getattr(a, "whiten", 0):
+            Xc, Xq = within_class_whiten(Xc, yc, Xq, a.whiten, a.device)
         t_feat = time.time() - t0
 
         Xc, Xq = pca_fit_transform(Xc, Xq, a.pca, a.device)

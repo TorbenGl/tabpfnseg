@@ -152,8 +152,11 @@ def upsample(feat: torch.Tensor, out_hw, mode: str, guide: torch.Tensor | None =
 
 # --------------------------------------------------------------------------- builder
 class FeatureBuilder:
-    def __init__(self, backbone, spec: FeatureSpec, res: ResSpec, img_size: int, cache_size: int = 64):
+    def __init__(self, backbone, spec: FeatureSpec, res: ResSpec, img_size: int, cache_size: int = 64,
+                 debias: int = 0):
         self.bb, self.spec, self.res, self.img_size = backbone, spec, res, img_size
+        self.debias = debias          # FROST/INSID3 positional debiasing: rank r (0 = off)
+        self._debias_basis: dict[int, torch.Tensor] = {}
         assert img_size % backbone.patch_size == 0, "img_size must be a multiple of the patch size"
         self.grid = img_size // backbone.patch_size
         self.out_hw = (self.grid * res.factor, self.grid * res.factor)
@@ -164,6 +167,24 @@ class FeatureBuilder:
     @property
     def dim(self) -> int:
         return self.spec.dim(self.bb.dim)
+
+    @torch.no_grad()
+    def _debias_layer(self, l: int, f: torch.Tensor) -> torch.Tensor:
+        """Project out the r leading directions of the token covariance of a content-free Gaussian-noise
+        image (positional component shared by all images; INSID3 / FROST), on L2-normalised tokens."""
+        if l not in self._debias_basis:
+            g = torch.Generator().manual_seed(0)
+            noise = torch.randn(1, 3, self.img_size, self.img_size, generator=g)
+            for ll, m in self.bb.forward_layers(noise, self.spec.layers).items():
+                T = F.normalize(m.reshape(m.shape[0], -1).float(), dim=0)
+                T = T - T.mean(1, keepdim=True)
+                _, vecs = torch.linalg.eigh(T @ T.T / T.shape[1])
+                self._debias_basis[ll] = vecs[:, -self.debias:].contiguous()  # C x r, largest eigenvalues
+        U = self._debias_basis[l]
+        C, h, w = f.shape
+        t = F.normalize(f.reshape(C, -1).float(), dim=0)
+        t = F.normalize(t - U @ (U.T @ t), dim=0)
+        return t.reshape(C, h, w).to(f.dtype)
 
     @torch.no_grad()
     def features(self, img: np.ndarray, key: str | None = None) -> torch.Tensor:
@@ -178,6 +199,8 @@ class FeatureBuilder:
         blocks = []
         for l in self.spec.layers:
             f = layer_maps[l]  # C x g x g
+            if self.debias:
+                f = self._debias_layer(l, f)
             for p in self.spec.pools:
                 if p == "1":
                     b = f

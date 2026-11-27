@@ -177,3 +177,16 @@ for tune in [TUNE, TUNE5]:
     for feats in ["layers=24", "layers=24;pools=1,cls"]:   # 'layers=24' = same run name as budget_tune(5) -> reused
         ct.append(f"{tune} --method tabpfn --n_estimators 8 --features '{feats}'")
 write("cls_tune", ct)
+
+# ------------------------------------------------------------------ report v2 (report_v2.txt)
+# Chosen on FSS-1000 val (segpfn_tune): 1024 px + letterbox + min-max = best TabPFN at 1-shot (84.6 vs 79.4) and
+# 5-shot (90.4 vs 87.3). Same geometry + normalisation for every learner -> clean Q1 on identical tables.
+V2 = "--backbone dinov3_l --img_size 1024 --letterbox 1 --score_norm minmax"
+r2 = []
+for ds, eps in REPORT_EPISODES.items():
+    for shots in REPORT_SHOTS:
+        base = f"--dataset {ds} --split test --episodes {eps} --shots {shots} --seed 0 {V2}"
+        r2.append(f"{base} --method tabpfn --n_estimators 8 --features 'layers=18,24;pools=1,5,g'")
+        r2.append(f"{base} --method tabpfn --n_estimators 8 --features 'layers=24'")
+        r2.append(f"{base} --method knn --features 'layers=24'")
+write("report_v2", r2)

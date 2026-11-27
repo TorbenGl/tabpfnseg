@@ -75,11 +75,14 @@ class HFViT(Backbone):
         out = self.model(pixel_values=x, output_hidden_states=True)
         hs = out.hidden_states  # (embeddings, block1, ..., blockN)
         res = {}
+        self.last_cls = {}  # CLS token per requested layer (C,), same normalisation as the patch tokens
         for l in layers:
             l_abs = l if l > 0 else self.num_layers + 1 + l  # allow negative indexing (-1 = last)
-            t = hs[l_abs][:, self.n_prefix :]
+            t = hs[l_abs]
             if self.apply_norm and self.norm is not None:
                 t = self.norm(t)
+            self.last_cls[l] = t[0, 0].float()
+            t = t[:, self.n_prefix :]
             assert t.shape[1] == h * w, (t.shape, h, w)
             res[l] = t[0].transpose(0, 1).reshape(-1, h, w).float()
         return res
@@ -104,6 +107,7 @@ class DummyBackbone(Backbone):
             l_abs = l if l > 0 else self.num_layers + 1 + l
             f = torch.tanh(patches @ self.projs[l_abs - 1])
             res[l] = f.T.reshape(self.dim, h, w).to(self.device)
+        self.last_cls = {l: m.mean(dim=(1, 2)) for l, m in res.items()}  # stand-in "CLS" for tests
         return res
 
 

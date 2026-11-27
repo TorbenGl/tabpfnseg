@@ -159,3 +159,22 @@ for extra in ["--score_norm minmax", f"{HI} --score_norm minmax"]:
     sp.append(f"{base.replace('--img_size 512', '')} --method {TABPFN_BEST} {extra}" if "1024" in extra
               else f"{base} --method {TABPFN_BEST} {extra}")
 write("segpfn_tune", sp)
+
+# ------------------------------------------------------------------ TabPFN on last-layer patch features in the report (report_last.txt)
+# Clean Q1 on the test sets: TabPFN vs kNN on the identical raw last-layer table (kNN last is already in the report).
+rl = []
+for ds, eps in REPORT_EPISODES.items():
+    for shots in REPORT_SHOTS:
+        rl.append(f"--dataset {ds} --split test --episodes {eps} --shots {shots} --seed 0 {BB} "
+                  f"--method tabpfn --n_estimators 8 --features 'layers=24'")
+write("report_last", rl)
+
+# ------------------------------------------------------------------ CLS token + patch token (cls_tune.txt), 8 estimators
+# cls: CLS vector on every patch (constant within an image); pmc: patch minus CLS; cos: cosine(patch, CLS), 1 column.
+ct = []
+for tune in [TUNE, TUNE5]:
+    for pools in ["1,cls", "1,pmc", "1,cos"]:
+        ct.append(f"{tune} --method tabpfn --n_estimators 8 --features 'layers=24;pools={pools}'")
+    for pools in ["1,pmc", "1,cos"]:
+        ct.append(f"{tune} --method knn --features 'layers=24;pools={pools}'")
+write("cls_tune", ct)

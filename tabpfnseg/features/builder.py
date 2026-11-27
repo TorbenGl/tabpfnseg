@@ -66,7 +66,8 @@ class FeatureSpec:
         return spec
 
     def dim(self, backbone_dim: int) -> int:
-        return len(self.layers) * len(self.pools) * backbone_dim + (6 if self.rgb else 0) + (2 if self.pos else 0)
+        per_layer = sum(1 if p == "cos" else backbone_dim for p in self.pools)
+        return len(self.layers) * per_layer + (6 if self.rgb else 0) + (2 if self.pos else 0)
 
 
 @dataclass
@@ -248,6 +249,18 @@ class FeatureBuilder:
                     b = f
                 elif p == "g":
                     b = f.mean(dim=(1, 2), keepdim=True).expand_as(f)
+                elif p in ("cls", "pmc", "cos"):
+                    # CLS token of this layer. cls: the CLS vector on every patch (constant per image);
+                    # pmc: patch minus CLS (unit vectors), i.e. the patch relative to the image summary;
+                    # cos: one column, cosine(patch, CLS)
+                    c = F.normalize(self.bb.last_cls[l].to(f.device, f.dtype), dim=0)[:, None, None]
+                    if p == "cls":
+                        b = c.expand_as(f)
+                    elif p == "pmc":
+                        b = F.normalize(f, dim=0) - c
+                    else:
+                        blocks.append((F.normalize(f, dim=0) * c).sum(0, keepdim=True))
+                        continue  # a single column: no L2 normalisation
                 else:
                     k = int(p)
                     b = F.avg_pool2d(f[None], k, stride=1, padding=k // 2, count_include_pad=False)[0]

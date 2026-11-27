@@ -154,9 +154,11 @@ def upsample(feat: torch.Tensor, out_hw, mode: str, guide: torch.Tensor | None =
 # --------------------------------------------------------------------------- builder
 class FeatureBuilder:
     def __init__(self, backbone, spec: FeatureSpec, res: ResSpec, img_size: int, cache_size: int = 64,
-                 debias: int = 0, letterbox: bool = False):
+                 debias: int = 0, letterbox: bool = False, native: bool = False):
         self.bb, self.spec, self.res, self.img_size = backbone, spec, res, img_size
         self.letterbox = letterbox    # keep aspect ratio: long edge -> img_size, pad with the ImageNet mean
+        self.native = native          # keep aspect ratio without padding: long edge -> img_size, non-square grid
+        assert not (letterbox and native), "choose one of letterbox / native"
         self.debias = debias          # FROST/INSID3 positional debiasing: rank r (0 = off)
         self._debias_basis: dict[int, torch.Tensor] = {}
         assert img_size % backbone.patch_size == 0, "img_size must be a multiple of the patch size"
@@ -174,22 +176,41 @@ class FeatureBuilder:
     def _debias_layer(self, l: int, f: torch.Tensor) -> torch.Tensor:
         """Project out the r leading directions of the token covariance of a content-free Gaussian-noise
         image (positional component shared by all images; INSID3 / FROST), on L2-normalised tokens."""
-        if l not in self._debias_basis:
+        C, h, w = f.shape
+        if (l, h, w) not in self._debias_basis:  # one basis per patch-grid shape (native grids vary)
             g = torch.Generator().manual_seed(0)
-            noise = torch.randn(1, 3, self.img_size, self.img_size, generator=g)
+            p = self.bb.patch_size
+            noise = torch.randn(1, 3, h * p, w * p, generator=g)
             for ll, m in self.bb.forward_layers(noise, self.spec.layers).items():
                 T = F.normalize(m.reshape(m.shape[0], -1).float(), dim=0)
                 T = T - T.mean(1, keepdim=True)
                 _, vecs = torch.linalg.eigh(T @ T.T / T.shape[1])
-                self._debias_basis[ll] = vecs[:, -self.debias:].contiguous()  # C x r, largest eigenvalues
-        U = self._debias_basis[l]
-        C, h, w = f.shape
+                self._debias_basis[(ll, h, w)] = vecs[:, -self.debias:].contiguous()  # C x r, largest eigenvalues
+        U = self._debias_basis[(l, h, w)]
         t = F.normalize(f.reshape(C, -1).float(), dim=0)
         t = F.normalize(t - U @ (U.T @ t), dim=0)
         return t.reshape(C, h, w).to(f.dtype)
 
     # ----------------------------------------------------------------- letterbox geometry (SegPFN-style)
     PAD_RGB = (124, 116, 104)  # ImageNet mean in uint8
+
+    def input_hw(self, h: int, w: int):
+        """Backbone input size for an h x w image: square (default / letterbox) or native aspect ratio,
+        long edge -> img_size, short edge rounded to a multiple of the patch size."""
+        S, p = self.img_size, self.bb.patch_size
+        if not self.native:
+            return S, S
+        s = S / max(h, w)
+        nh, nw = (S, max(p, int(round(w * s / p)) * p)) if h >= w else (max(p, int(round(h * s / p)) * p), S)
+        return nh, nw
+
+    def grid_hw(self, h: int, w: int):
+        """Working grid (rows, cols) for an h x w image."""
+        if not self.native:
+            return self.out_hw
+        nh, nw = self.input_hw(h, w)
+        f = self.res.factor
+        return nh // self.bb.patch_size * f, nw // self.bb.patch_size * f
 
     def box(self, h: int, w: int):
         """(x0, y0, x1, y1) of the image inside the square canvas (whole canvas without letterbox)."""
@@ -214,6 +235,8 @@ class FeatureBuilder:
 
     def valid_grid(self, h: int, w: int) -> np.ndarray:
         """Grid cells with at least half of their pixels inside the image (all True without letterbox)."""
+        if self.native:
+            return np.ones(self.grid_hw(h, w), bool)
         x0, y0, x1, y1 = self.box(h, w)
         v = torch.zeros(1, 1, self.img_size, self.img_size)
         v[..., y0:y1, x0:x1] = 1
@@ -234,10 +257,12 @@ class FeatureBuilder:
         if key is not None and key in self._cache:
             return self._cache[key]
         img = self.to_canvas(img)
-        x = self.bb.preprocess(img, self.img_size)
+        in_hw = self.input_hw(*img.shape[:2])
+        out_hw = self.grid_hw(*img.shape[:2])
+        x = self.bb.preprocess(img, in_hw)
         layer_maps = self.bb.forward_layers(x, self.spec.layers)
         img01 = torch.from_numpy(img).permute(2, 0, 1).float().div(255).to(self.bb.device)
-        guide = rgb_to_lab(F.interpolate(img01[None], size=(self.img_size, self.img_size), mode="bilinear",
+        guide = rgb_to_lab(F.interpolate(img01[None], size=in_hw, mode="bilinear",
                                          align_corners=False, antialias=True)[0])
         blocks = []
         for l in self.spec.layers:
@@ -268,10 +293,10 @@ class FeatureBuilder:
                     b = F.normalize(b, dim=0)
                 blocks.append(b)
         feat = torch.cat(blocks, 0)
-        feat = upsample(feat, self.out_hw, self.res.up, guide)
+        feat = upsample(feat, out_hw, self.res.up, guide)
         if self.spec.rgb:
-            lab = F.interpolate(guide[None], size=self.out_hw, mode="area")[0]
-            lab2 = F.interpolate((guide**2)[None], size=self.out_hw, mode="area")[0]
+            lab = F.interpolate(guide[None], size=out_hw, mode="area")[0]
+            lab2 = F.interpolate((guide**2)[None], size=out_hw, mode="area")[0]
             std = (lab2 - lab**2).clamp_min(0).sqrt()
             feat = torch.cat([feat, lab, std], 0)
         if self.spec.pos:
@@ -304,8 +329,8 @@ class FeatureBuilder:
             frac[den < 0.5] = float("nan")
             return frac
         m = torch.from_numpy(mask).float()[None, None]
-        m = F.interpolate(m, size=(self.img_size, self.img_size), mode="bilinear", align_corners=False)
-        return F.adaptive_avg_pool2d(m, self.out_hw)[0, 0]
+        m = F.interpolate(m, size=self.input_hw(*mask.shape[:2]), mode="bilinear", align_corners=False)
+        return F.adaptive_avg_pool2d(m, self.grid_hw(*mask.shape[:2]))[0, 0]
 
 
 # --------------------------------------------------------------------------- context sampling

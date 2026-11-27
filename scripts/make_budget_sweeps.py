@@ -179,9 +179,11 @@ for tune in [TUNE, TUNE5]:
 write("cls_tune", ct)
 
 # ------------------------------------------------------------------ report v2 (report_v2.txt)
-# Chosen on FSS-1000 val (segpfn_tune): 1024 px + letterbox + min-max = best TabPFN at 1-shot (84.6 vs 79.4) and
-# 5-shot (90.4 vs 87.3). Same geometry + normalisation for every learner -> clean Q1 on identical tables.
-V2 = "--backbone dinov3_l --img_size 1024 --letterbox 1 --score_norm minmax"
+# Chosen on FSS-1000 val (segpfn_tune): 1024 px + min-max = best TabPFN at 1-shot (84.6 vs 79.4) and 5-shot
+# (90.4 vs 87.3). Aspect ratio: native (DINOv3/RoPE takes non-square grids) instead of letterbox padding; FSS-1000
+# images are square, so on val letterbox == native == square and the choice is not affected.
+# Same geometry + normalisation for every learner -> clean Q1 on identical tables.
+V2 = "--backbone dinov3_l --img_size 1024 --native_aspect 1 --score_norm minmax"
 r2 = []
 for ds, eps in REPORT_EPISODES.items():
     for shots in REPORT_SHOTS:

@@ -43,10 +43,12 @@ class Backbone(nn.Module):
     num_layers: int
     dim: int
 
-    def preprocess(self, img: np.ndarray, size: int) -> torch.Tensor:
-        """uint8 HxWx3 -> normalized 1x3xSxS (square resize, the standard FSS protocol)."""
+    def preprocess(self, img: np.ndarray, size) -> torch.Tensor:
+        """uint8 HxWx3 -> normalized 1x3xSxS (square resize, the standard FSS protocol), or 1x3xHxW for
+        size=(H, W) (native aspect ratio; DINOv3's RoPE handles non-square patch grids)."""
+        hw = (size, size) if isinstance(size, int) else tuple(size)
         x = torch.from_numpy(img).permute(2, 0, 1)[None].float() / 255.0
-        x = F.interpolate(x, size=(size, size), mode="bilinear", align_corners=False, antialias=True)
+        x = F.interpolate(x, size=hw, mode="bilinear", align_corners=False, antialias=True)
         return (x - IMAGENET_MEAN) / IMAGENET_STD
 
     def forward_layers(self, x: torch.Tensor, layers: list[int]) -> dict[int, torch.Tensor]:

@@ -68,6 +68,8 @@ def get_args(argv=None):
     g.add_argument("--support_flip", type=int, default=0, help="add horizontally flipped supports (FROST)")
     g.add_argument("--letterbox", type=int, default=0,
                    help="keep the aspect ratio: long edge -> img_size, pad with the ImageNet mean (SegPFN)")
+    g.add_argument("--native_aspect", type=int, default=0,
+                   help="keep the aspect ratio without padding: long edge -> img_size, non-square patch grid")
     g.add_argument("--score_norm", default="none", choices=["none", "minmax"],
                    help="minmax: rescale each query's patch scores to [0,1] before the 0.5 threshold (SegPFN)")
     g.add_argument("--frost", type=int, default=0, help="shortcut: --debias 250 --whiten 0.95 --support_flip 1")
@@ -119,7 +121,7 @@ def build_method(a):
     if a.method in FEATURE_HEADS or a.method == "oracle_grid":
         bb = build_backbone(a.backbone, a.device)
         fb = FeatureBuilder(bb, FeatureSpec.parse(a.features), ResSpec.parse(a.res, a.up), a.img_size, debias=a.debias,
-                            letterbox=bool(a.letterbox))
+                            letterbox=bool(a.letterbox), native=bool(a.native_aspect))
         if a.method == "oracle_grid":
             from .methods.feature_segmenter import OracleGrid
 
@@ -179,6 +181,8 @@ def run_name(a) -> str:
         parts += [a.backbone, feat, a.res, a.up if a.res != "patch" else "", a.sampling, f"ctx{a.max_ctx}"]
         if a.letterbox:
             parts.append("lbox")
+        if a.native_aspect:
+            parts.append("native")
         if a.score_norm != "none":
             parts.append(a.score_norm)
         if a.img_size != 512:  # non-default input size (e.g. 1024) must not collide with the 512 run

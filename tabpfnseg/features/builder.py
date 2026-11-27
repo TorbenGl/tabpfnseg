@@ -153,8 +153,9 @@ def upsample(feat: torch.Tensor, out_hw, mode: str, guide: torch.Tensor | None =
 # --------------------------------------------------------------------------- builder
 class FeatureBuilder:
     def __init__(self, backbone, spec: FeatureSpec, res: ResSpec, img_size: int, cache_size: int = 64,
-                 debias: int = 0):
+                 debias: int = 0, letterbox: bool = False):
         self.bb, self.spec, self.res, self.img_size = backbone, spec, res, img_size
+        self.letterbox = letterbox    # keep aspect ratio: long edge -> img_size, pad with the ImageNet mean
         self.debias = debias          # FROST/INSID3 positional debiasing: rank r (0 = off)
         self._debias_basis: dict[int, torch.Tensor] = {}
         assert img_size % backbone.patch_size == 0, "img_size must be a multiple of the patch size"
@@ -186,11 +187,52 @@ class FeatureBuilder:
         t = F.normalize(t - U @ (U.T @ t), dim=0)
         return t.reshape(C, h, w).to(f.dtype)
 
+    # ----------------------------------------------------------------- letterbox geometry (SegPFN-style)
+    PAD_RGB = (124, 116, 104)  # ImageNet mean in uint8
+
+    def box(self, h: int, w: int):
+        """(x0, y0, x1, y1) of the image inside the square canvas (whole canvas without letterbox)."""
+        S = self.img_size
+        if not self.letterbox:
+            return 0, 0, S, S
+        s = S / max(h, w)
+        nw, nh = max(1, int(w * s + 0.5)), max(1, int(h * s + 0.5))
+        x0, y0 = (S - nw) // 2, (S - nh) // 2
+        return x0, y0, x0 + nw, y0 + nh
+
+    def to_canvas(self, img: np.ndarray) -> np.ndarray:
+        if not self.letterbox:
+            return img
+        from PIL import Image as _Image
+
+        x0, y0, x1, y1 = self.box(*img.shape[:2])
+        canvas = np.empty((self.img_size, self.img_size, 3), np.uint8)
+        canvas[:] = self.PAD_RGB
+        canvas[y0:y1, x0:x1] = np.asarray(_Image.fromarray(img).resize((x1 - x0, y1 - y0), _Image.BILINEAR))
+        return canvas
+
+    def valid_grid(self, h: int, w: int) -> np.ndarray:
+        """Grid cells with at least half of their pixels inside the image (all True without letterbox)."""
+        x0, y0, x1, y1 = self.box(h, w)
+        v = torch.zeros(1, 1, self.img_size, self.img_size)
+        v[..., y0:y1, x0:x1] = 1
+        return (F.adaptive_avg_pool2d(v, self.out_hw)[0, 0] >= 0.5).numpy()
+
+    def grid_to_image(self, p_grid: np.ndarray, hw) -> np.ndarray:
+        """Grid scores -> original image resolution (bilinear), cropping the letterbox padding."""
+        t = torch.from_numpy(np.ascontiguousarray(p_grid)).float()[None, None]
+        if self.letterbox:
+            x0, y0, x1, y1 = self.box(*hw)
+            t = F.interpolate(t, size=(self.img_size, self.img_size), mode="bilinear", align_corners=False)
+            t = t[..., y0:y1, x0:x1]
+        return F.interpolate(t, size=tuple(hw), mode="bilinear", align_corners=False)[0, 0].numpy()
+
     @torch.no_grad()
     def features(self, img: np.ndarray, key: str | None = None) -> torch.Tensor:
         """-> D x H' x W' feature grid (on the backbone device)."""
         if key is not None and key in self._cache:
             return self._cache[key]
+        img = self.to_canvas(img)
         x = self.bb.preprocess(img, self.img_size)
         layer_maps = self.bb.forward_layers(x, self.spec.layers)
         img01 = torch.from_numpy(img).permute(2, 0, 1).float().div(255).to(self.bb.device)
@@ -234,7 +276,20 @@ class FeatureBuilder:
         return feat
 
     def mask_fraction(self, mask: np.ndarray) -> torch.Tensor:
-        """Fraction of foreground pixels inside each grid cell (H' x W'), via area pooling."""
+        """Fraction of foreground pixels inside each grid cell (H' x W'), via area pooling.
+        With letterbox: fraction over the valid (non-padding) pixels; NaN for cells that are mostly padding."""
+        if self.letterbox:
+            h, w = mask.shape[:2]
+            x0, y0, x1, y1 = self.box(h, w)
+            m = torch.from_numpy(mask.astype(np.float32))[None, None]
+            fg = torch.zeros(1, 1, self.img_size, self.img_size)
+            fg[..., y0:y1, x0:x1] = F.interpolate(m, size=(y1 - y0, x1 - x0), mode="bilinear", align_corners=False)
+            v = torch.zeros_like(fg)
+            v[..., y0:y1, x0:x1] = 1
+            num, den = F.adaptive_avg_pool2d(fg, self.out_hw)[0, 0], F.adaptive_avg_pool2d(v, self.out_hw)[0, 0]
+            frac = num / den.clamp_min(1e-6)
+            frac[den < 0.5] = float("nan")
+            return frac
         m = torch.from_numpy(mask).float()[None, None]
         m = F.interpolate(m, size=(self.img_size, self.img_size), mode="bilinear", align_corners=False)
         return F.adaptive_avg_pool2d(m, self.out_hw)[0, 0]
@@ -244,6 +299,7 @@ class FeatureBuilder:
 def boundary_weight(frac: np.ndarray, sigma: float = 2.0, lam: float = 4.0) -> np.ndarray:
     from scipy.ndimage import distance_transform_edt
 
+    frac = np.nan_to_num(frac)
     hard = frac >= 0.5
     if hard.all() or (~hard).all():
         return np.ones_like(frac)
@@ -262,7 +318,7 @@ def select_context(fracs: list[np.ndarray], strategy: str, max_ctx: int, rng: np
     labels = [(f >= 0.5) for f in flat]
     valid = []
     for f in flat:
-        v = np.ones_like(f, dtype=bool)
+        v = ~np.isnan(f)  # letterbox padding cells carry NaN and are never context rows
         if ambig is not None:  # drop mixed cells (e.g. 0.2 < frac < 0.8): cleaner labels, fewer boundary rows
             v = (f <= ambig[0]) | (f >= ambig[1])
         valid.append(v)

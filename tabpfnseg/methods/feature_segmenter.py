@@ -123,7 +123,13 @@ class FeatureSegmenter:
         t_head = time.time() - t1
         if a.prior_correct:
             p = prior_correct(p, sampled_rate, true_rate)
-        prob = self.to_mask_res(p.reshape(H, W), q_img.shape[:2])
+        if getattr(a, "score_norm", "none") == "minmax":
+            # SegPFN: rescale the query's scores to [0, 1] (over real, non-padding cells) before the 0.5
+            # threshold -> the threshold becomes the midpoint between this image's lowest and highest score
+            valid = self.fb.valid_grid(*q_img.shape[:2]).reshape(-1)
+            lo, hi = float(p[valid].min()), float(p[valid].max())
+            p = np.where(valid, (p - lo) / max(hi - lo, 1e-6), 0.0).astype(np.float32)
+        prob = self.fb.grid_to_image(p.reshape(H, W), q_img.shape[:2])
         stats = {"n_ctx": int(len(yc)), "n_anchor": n_anchor, "ctx_fg_rate": float(sampled_rate), "dim": int(Xc.shape[1]),
                  "n_query_rows": int(len(Xq)), "t_feat": t_feat, "t_head": t_head}
         return prob, stats
@@ -146,5 +152,5 @@ class OracleGrid:
         self.fb = builder
 
     def predict(self, sup_imgs, sup_masks, q_img, sup_keys=None, q_key=None, q_mask_oracle=None, **_):
-        frac = self.fb.mask_fraction(q_mask_oracle).numpy()
-        return FeatureSegmenter.to_mask_res(frac, q_img.shape[:2]), {}
+        frac = np.nan_to_num(self.fb.mask_fraction(q_mask_oracle).numpy())
+        return self.fb.grid_to_image(frac, q_img.shape[:2]), {}

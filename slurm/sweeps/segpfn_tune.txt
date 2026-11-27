@@ -1,0 +1,10 @@
+--dataset fss1000 --split val --purpose tune --episodes 600 --limit 300 --shots 1 --seed 0 --backbone dinov3_l --img_size 512 --method tabpfn --n_estimators 8 --features 'layers=18,24;pools=1,5,g' --score_norm minmax
+--dataset fss1000 --split val --purpose tune --episodes 600 --limit 300 --shots 1 --seed 0 --backbone dinov3_l  --method tabpfn --n_estimators 8 --features 'layers=18,24;pools=1,5,g' --img_size 1024 --letterbox 1
+--dataset fss1000 --split val --purpose tune --episodes 600 --limit 300 --shots 1 --seed 0 --backbone dinov3_l  --method tabpfn --n_estimators 8 --features 'layers=18,24;pools=1,5,g' --img_size 1024 --letterbox 1 --score_norm minmax
+--dataset fss1000 --split val --purpose tune --episodes 600 --limit 300 --shots 1 --seed 0 --backbone dinov3_l --img_size 512 --method knn --features 'layers=24' --score_norm minmax
+--dataset fss1000 --split val --purpose tune --episodes 600 --limit 300 --shots 1 --seed 0 --backbone dinov3_l  --method knn --features 'layers=24' --img_size 1024 --letterbox 1
+--dataset fss1000 --split val --purpose tune --episodes 600 --limit 300 --shots 1 --seed 0 --backbone dinov3_l  --method knn --features 'layers=24' --img_size 1024 --letterbox 1 --score_norm minmax
+--dataset fss1000 --split val --purpose tune --episodes 600 --limit 300 --shots 5 --seed 0 --backbone dinov3_l --img_size 512 --method tabpfn --n_estimators 8 --features 'layers=18,24;pools=1,5,g' --score_norm minmax
+--dataset fss1000 --split val --purpose tune --episodes 600 --limit 300 --shots 5 --seed 0 --backbone dinov3_l  --method tabpfn --n_estimators 8 --features 'layers=18,24;pools=1,5,g' --img_size 1024 --letterbox 1 --score_norm minmax
+--dataset isic --split test --episodes 600 --shots 1 --seed 0 --backbone dinov3_l --img_size 512 --method tabpfn --n_estimators 8 --features 'layers=18,24;pools=1,5,g' --score_norm minmax
+--dataset isic --split test --episodes 600 --shots 1 --seed 0 --backbone dinov3_l  --method tabpfn --n_estimators 8 --features 'layers=18,24;pools=1,5,g' --img_size 1024 --letterbox 1 --score_norm minmax

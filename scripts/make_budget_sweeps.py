@@ -141,3 +141,21 @@ for ds, eps in REPORT_EPISODES.items():
         for key in ["tabpfn", "knn"]:
             rr.append(f"{base} {BEST[key]} --refine sam3band")
 write("report_refine", rr)
+
+# ------------------------------------------------------------------ SegPFN-style geometry / threshold (segpfn_tune.txt)
+# min-max score normalisation per query (SegPFN) and 1024 px with kept aspect ratio (letterbox).
+HI = "--img_size 1024 --letterbox 1"
+sp = []
+for m in [TABPFN_BEST, "knn --features 'layers=24'"]:
+    for extra in ["--score_norm minmax", HI, f"{HI} --score_norm minmax"]:          # FSS-1000 val 1-shot
+        sp.append(f"{TUNE.replace('--img_size 512', '')} --method {m} {extra}" if "1024" in extra
+                  else f"{TUNE} --method {m} {extra}")
+for extra in ["--score_norm minmax", f"{HI} --score_norm minmax"]:                 # FSS-1000 val 5-shot, TabPFN
+    sp.append(f"{TUNE5.replace('--img_size 512', '')} --method {TABPFN_BEST} {extra}" if "1024" in extra
+              else f"{TUNE5} --method {TABPFN_BEST} {extra}")
+# diagnostic only (test set, fixed SegPFN recipe, not used for selection): our weakest case, ISIC 1-shot
+for extra in ["--score_norm minmax", f"{HI} --score_norm minmax"]:
+    base = f"--dataset isic --split test --episodes 600 --shots 1 --seed 0 {BB}"
+    sp.append(f"{base.replace('--img_size 512', '')} --method {TABPFN_BEST} {extra}" if "1024" in extra
+              else f"{base} --method {TABPFN_BEST} {extra}")
+write("segpfn_tune", sp)

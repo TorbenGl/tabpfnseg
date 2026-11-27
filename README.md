@@ -9,9 +9,6 @@ few-shot protocol against
 Full rationale, protocol, leakage analysis and the patch-level vs pixel-level discussion:
 **[docs/DESIGN.md](docs/DESIGN.md)**.
 
-What was run, why, with which code, and what we decided: **[docs/PROVENANCE.md](docs/PROVENANCE.md)**
-(results registry: `python scripts/provenance.py` → `results/REGISTRY.md`).
-
 ## Layout
 ```
 tabpfnseg/data/        datasets (FSS-1000, Deepglobe, ISIC, Chest X-ray, SUIM, UWS, COCO-json underwater sets, folder, synthetic) + shared episodes

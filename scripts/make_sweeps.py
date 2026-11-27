@@ -15,7 +15,7 @@ Stage 2  final report: frozen configs (edit FINAL below after looking at stage 1
 import itertools
 import os
 
-# never run: replaced by scripts/make_budget_sweeps.py (see docs/PROVENANCE.md). Kept for reference.
+# never run: replaced by scripts/make_budget_sweeps.py. Kept for reference.
 OUT = os.path.join(os.path.dirname(__file__), "..", "slurm", "sweeps", "archive_full_plan")
 
 BACKBONES = {  # name -> img_size (DINOv3 only; /16 patches -> 32x32 grid at 512)

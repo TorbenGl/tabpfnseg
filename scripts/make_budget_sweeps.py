@@ -170,11 +170,10 @@ for ds, eps in REPORT_EPISODES.items():
 write("report_last", rl)
 
 # ------------------------------------------------------------------ CLS token + patch token (cls_tune.txt), 8 estimators
-# cls: CLS vector on every patch (constant within an image); pmc: patch minus CLS; cos: cosine(patch, CLS), 1 column.
+# TabPFN on the raw last-layer patch tokens vs. the same + the CLS token of the image on every patch row.
+# (pools also supports pmc = patch minus CLS and cos = cosine(patch, CLS); not run.)
 ct = []
 for tune in [TUNE, TUNE5]:
-    for pools in ["1,cls", "1,pmc", "1,cos"]:
-        ct.append(f"{tune} --method tabpfn --n_estimators 8 --features 'layers=24;pools={pools}'")
-    for pools in ["1,pmc", "1,cos"]:
-        ct.append(f"{tune} --method knn --features 'layers=24;pools={pools}'")
+    for feats in ["layers=24", "layers=24;pools=1,cls"]:   # 'layers=24' = same run name as budget_tune(5) -> reused
+        ct.append(f"{tune} --method tabpfn --n_estimators 8 --features '{feats}'")
 write("cls_tune", ct)

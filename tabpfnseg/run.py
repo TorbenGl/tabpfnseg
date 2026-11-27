@@ -144,6 +144,32 @@ def build_method(a):
     raise ValueError(a.method)
 
 
+def provenance() -> dict:
+    """Where a result came from: code version, sweep file and line, SLURM job, host, time."""
+    import datetime
+    import socket
+    import subprocess
+
+    repo = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+    def git(*cmd):
+        try:
+            return subprocess.run(["git", "-C", repo, *cmd], capture_output=True, text=True, timeout=10).stdout.strip()
+        except Exception:
+            return ""
+
+    return {
+        "git_commit": git("rev-parse", "HEAD"),
+        "git_dirty": bool(git("status", "--porcelain", "--untracked-files=no")),
+        "sweep": os.environ.get("TABPFNSEG_SWEEP", ""),
+        "sweep_line": os.environ.get("SLURM_ARRAY_TASK_ID", ""),
+        "slurm_job": os.environ.get("SLURM_ARRAY_JOB_ID") or os.environ.get("SLURM_JOB_ID", ""),
+        "host": socket.gethostname(),
+        "started": datetime.datetime.now().isoformat(timespec="seconds"),
+        "argv": " ".join(sys.argv[1:]),
+    }
+
+
 def run_name(a) -> str:
     if a.name:
         return a.name
@@ -218,7 +244,7 @@ def main(argv=None):
     os.makedirs(out_dir, exist_ok=True)
     cfg = {k: v for k, v in vars(a).items()}
     cfg.update({"run_name": name, "episode_file": ep_path, "n_episodes_run": len(episodes),
-                "dim": minfo.get("dim"), "grid": minfo.get("grid")})
+                "dim": minfo.get("dim"), "grid": minfo.get("grid"), "provenance": provenance()})
     print(json.dumps({k: cfg[k] for k in ("run_name", "dim", "grid", "n_episodes_run")}))
 
     meter = Meter()

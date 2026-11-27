@@ -10,6 +10,7 @@
 #   bash slurm/submit_sweep.sh slurm/sweeps/stage1_tune.txt [max_parallel]
 source "${SLURM_SUBMIT_DIR:-.}/slurm/common.sh"
 SWEEP=$1
+export TABPFNSEG_SWEEP="$SWEEP"   # recorded in results/<run>/config.json -> provenance
 LINE=$(sed -n "${SLURM_ARRAY_TASK_ID}p" "$SWEEP")
 echo "ARGS: $LINE"
 # skip finished runs (re-submitting a sweep only runs what is missing)

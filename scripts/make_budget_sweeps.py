@@ -118,3 +118,16 @@ for shots in [1, 5]:
     for m in LEARNERS:
         f.append(f"--dataset deepglobe --split test --episodes 600 --shots {shots} --seed 0 {BB} --method {m} --frost 1")
 write("frost_tune", f)
+
+# ------------------------------------------------------------------ 5-shot version of the first tune (budget_tune5.txt)
+# Same FSS-1000 val episodes protocol as budget_tune, but 5 support images. Runs that also appear in
+# frost_tune (tabpfn/knn/proto baselines) have identical names and are skipped by --skip_done.
+t5 = []
+for fv in FEATS.values():                            # Q1: every feature set, TabPFN vs kNN
+    t5.append(f"{TUNE5} --method tabpfn --n_estimators 8 --features '{fv}'")
+    t5.append(f"{TUNE5} --method knn --features '{fv}'")
+t5.append(f"{TUNE5} --method proto --features '{FEATS['last']}'")
+t5.append(f"{TUNE5} --method logreg --logreg_C 0.01 --features '{FEATS['nb6']}'")
+for m in ["seggpt", "sam3_stitch", "sam3_text"]:     # Q2 references
+    t5.append(f"--dataset fss1000 --split val --purpose tune --episodes 600 --limit {TUNE_EPISODES} --shots 5 --seed 0 --method {m}")
+write("budget_tune5", t5)
